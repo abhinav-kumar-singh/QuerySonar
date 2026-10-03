@@ -25,6 +25,7 @@ import {
   Lock,
   Globe,
   Layers,
+  Eye,
 } from "lucide-react";
 import type { AuditResult } from "@/lib/geo-engine/types";
 import { useSession, signOut } from "next-auth/react";
@@ -41,6 +42,8 @@ import { PlaceAutocomplete } from "@/components/ui/place-autocomplete";
 import { WorkspaceTeamTab } from "@/components/dashboard/settings/workspace-team-tab";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { useWorkspaceRole } from "@/lib/workspace-role-context";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 type BrandSettingsResponse = {
   brand: {
@@ -80,6 +83,7 @@ function SettingsFormContent({
   const { status } = useSession();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
+  const { role: userRole, permissions, isOwner, isAdmin, isEditor, isViewer } = useWorkspaceRole();
   const tabParam = searchParams.get("tab");
   const initialTab = tabParam === "billing" ? "billing" : tabParam === "team" ? "team" : "brand";
 
@@ -188,6 +192,23 @@ function SettingsFormContent({
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [confirmDeleteInput, setConfirmDeleteInput] = useState("");
+
+  // Workspace deletion modal state
+  const [showWorkspaceDeleteModal, setShowWorkspaceDeleteModal] = useState(false);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
+
+  const handleConfirmDeleteWorkspace = async () => {
+    setIsDeletingWorkspace(true);
+    const activeId = audit?.brandProfile?.name?.toLowerCase().replace(/[^a-z0-9]/g, "-") || "";
+    try {
+      await fetch(`/api/workspaces?id=${activeId}`, { method: "DELETE" });
+    } catch (err) {
+      console.warn("Failed to delete workspace on server:", err);
+    }
+    deleteBrand(activeId);
+    setIsDeletingWorkspace(false);
+    setShowWorkspaceDeleteModal(false);
+  };
 
   useBodyScrollLock(showDeleteModal);
 
@@ -707,6 +728,13 @@ function SettingsFormContent({
                 <h3 className="text-base font-bold text-[var(--syn-heading)]">{t("settings.brandIdentity")}</h3>
               </div>
 
+              {!permissions.canEditBrandProfile && (
+                <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs text-sky-600 dark:text-sky-400 flex items-center gap-2 mb-4">
+                  <Eye className="w-4 h-4 shrink-0 text-sky-400" />
+                  <span>{t("settings.readOnlyNotice") || "Read-Only Mode: Settings can only be edited by GEO Analysts and Brand Leads."}</span>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-[var(--syn-text)] block mb-1.5">
@@ -715,9 +743,10 @@ function SettingsFormContent({
                   <input
                     type="text"
                     value={brandName}
+                    disabled={!permissions.canEditBrandProfile}
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder={t("settings.brandPlaceholder")}
-                    className="syn-input"
+                    className="syn-input disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -728,9 +757,10 @@ function SettingsFormContent({
                   <input
                     type="text"
                     value={websiteUrl}
+                    disabled={!permissions.canEditBrandProfile}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder={t("settings.websitePlaceholder")}
-                    className="syn-input"
+                    className="syn-input disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -738,6 +768,7 @@ function SettingsFormContent({
                 <div>
                   <PlaceAutocomplete
                     value={targetLocation}
+                    disabled={!permissions.canEditBrandProfile}
                     onChange={(loc) => setTargetLocation(loc)}
                     label="Target Market / Geographic Location"
                     sublabel="Geo-target your brand's AI search audit for visibility in this specific location"
@@ -745,7 +776,7 @@ function SettingsFormContent({
                   />
                 </div>
 
-                {isIdentityChanged && (
+                {isIdentityChanged && permissions.canEditBrandProfile && (
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
                       <AlertTriangle className="w-4 h-4" />
@@ -771,8 +802,8 @@ function SettingsFormContent({
               <button
                 type="button"
                 onClick={() => handleSaveBrandProfile(false)}
-                disabled={isSavingSettings || !brandName.trim()}
-                className="syn-btn-primary cursor-pointer"
+                disabled={!permissions.canEditBrandProfile || isSavingSettings || !brandName.trim()}
+                className="syn-btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingSettings ? (
                   <>
@@ -803,40 +834,44 @@ function SettingsFormContent({
                 {competitors.map((comp) => (
                   <span key={comp} className="syn-badge syn-badge-neutral text-xs py-1.5 px-3">
                     {comp}
-                    <button
-                      type="button"
-                      onClick={() => removeCompetitor(comp)}
-                      className="text-[var(--syn-muted)] hover:text-red-500 ml-1 cursor-pointer"
-                      aria-label={`Remove ${comp}`}
-                    >
-                      ✕
-                    </button>
+                    {permissions.canEditBrandProfile && (
+                      <button
+                        type="button"
+                        onClick={() => removeCompetitor(comp)}
+                        className="text-[var(--syn-muted)] hover:text-red-500 ml-1 cursor-pointer"
+                        aria-label={`Remove ${comp}`}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </span>
                 ))}
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={t("settings.competitorPlaceholder")}
-                  value={newCompetitor}
-                  onChange={(e) => setNewCompetitor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addCompetitor();
-                    }
-                  }}
-                  className="syn-input text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={addCompetitor}
-                  className="syn-btn-secondary shrink-0 text-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {t("settings.addCompetitor")}
-                </button>
-              </div>
+              {permissions.canEditBrandProfile && (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={t("settings.competitorPlaceholder")}
+                    value={newCompetitor}
+                    onChange={(e) => setNewCompetitor(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCompetitor();
+                      }
+                    }}
+                    className="syn-input text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCompetitor}
+                    className="syn-btn-secondary shrink-0 text-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {t("settings.addCompetitor")}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-[var(--syn-border)] flex justify-between items-center text-xs text-[var(--syn-muted)]">
@@ -855,24 +890,26 @@ function SettingsFormContent({
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={autoSuggestQueries}
-                    disabled={isSuggestingQueries || queries.length >= maxQueries}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
-                  >
-                    {isSuggestingQueries ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        <span>{t("settings.suggesting")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3 h-3" />
-                        <span>{t("settings.autoSuggest")}</span>
-                      </>
-                    )}
-                  </button>
+                  {permissions.canManageQueries && (
+                    <button
+                      type="button"
+                      onClick={autoSuggestQueries}
+                      disabled={isSuggestingQueries || queries.length >= maxQueries}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
+                    >
+                      {isSuggestingQueries ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>{t("settings.suggesting")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3" />
+                          <span>{t("settings.autoSuggest")}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <span className="syn-badge syn-badge-emerald text-xs">
                     {userPlan === "GROWTH"
                       ? `Growth (${maxQueries})`
@@ -895,48 +932,52 @@ function SettingsFormContent({
                       <span className="font-mono text-[var(--syn-text)] font-medium line-clamp-1">
                         &ldquo;{q}&rdquo;
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => removeQuery(q)}
-                        disabled={isSavingQueries}
-                        className="text-[var(--syn-muted)] hover:text-red-500 transition-colors shrink-0 ml-2 cursor-pointer"
-                        aria-label="Remove query"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {permissions.canManageQueries && (
+                        <button
+                          type="button"
+                          onClick={() => removeQuery(q)}
+                          disabled={isSavingQueries}
+                          className="text-[var(--syn-muted)] hover:text-red-500 transition-colors shrink-0 ml-2 cursor-pointer"
+                          aria-label="Remove query"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   ))
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={
-                    queries.length >= maxQueries
-                      ? t("settings.queryLimitReached", { max: maxQueries, tier: userPlan })
-                      : t("settings.queryPlaceholder")
-                  }
-                  value={newQuery}
-                  disabled={queries.length >= maxQueries}
-                  onChange={(e) => setNewQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addQuery();
+              {permissions.canManageQueries && (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={
+                      queries.length >= maxQueries
+                        ? t("settings.queryLimitReached", { max: maxQueries, tier: userPlan })
+                        : t("settings.queryPlaceholder")
                     }
-                  }}
-                  className="syn-input text-xs disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={addQuery}
-                  disabled={isSavingQueries || !newQuery.trim() || queries.length >= maxQueries}
-                  className="syn-btn-primary shrink-0 text-xs disabled:opacity-50 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {t("settings.trackQueryBtn")}
-                </button>
-              </div>
+                    value={newQuery}
+                    disabled={queries.length >= maxQueries}
+                    onChange={(e) => setNewQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addQuery();
+                      }
+                    }}
+                    className="syn-input text-xs disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={addQuery}
+                    disabled={isSavingQueries || !newQuery.trim() || queries.length >= maxQueries}
+                    className="syn-btn-secondary shrink-0 text-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {t("settings.addQueryBtn")}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -991,8 +1032,8 @@ function SettingsFormContent({
             </div>
           </div>
 
-          {/* Card 6: Workspace Deletion (Danger Zone) */}
-          {brands.length > 1 && (
+          {/* Card 6: Workspace Deletion (Danger Zone - Owner Only) */}
+          {permissions.canDeleteWorkspace && brands.length > 1 && (
             <div className="lg:col-span-12 syn-card border-amber-500/25 bg-amber-500/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -1008,16 +1049,7 @@ function SettingsFormContent({
 
               <button
                 type="button"
-                onClick={async () => {
-                  const activeId = audit?.brandProfile?.name?.toLowerCase().replace(/[^a-z0-9]/g, "-") || "";
-                  if (!confirm(`Are you sure you want to delete "${brandName || audit?.brandProfile?.name}" workspace?`)) return;
-                  try {
-                    await fetch(`/api/workspaces?id=${activeId}`, { method: "DELETE" });
-                  } catch (err) {
-                    console.warn("Failed to delete workspace on server:", err);
-                  }
-                  deleteBrand(activeId);
-                }}
+                onClick={() => setShowWorkspaceDeleteModal(true)}
                 className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1026,31 +1058,33 @@ function SettingsFormContent({
             </div>
           )}
 
-          {/* Card 7: Danger Zone (Account Deletion) */}
-          <div className="lg:col-span-12 syn-card border-red-500/25 bg-red-500/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                <h3 className="text-base font-bold text-red-500">{t("settings.dangerZoneTitle")}</h3>
+          {/* Card 7: Danger Zone (Account Deletion - Owner Only) */}
+          {permissions.canDeleteWorkspace && (
+            <div className="lg:col-span-12 syn-card border-red-500/25 bg-red-500/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-red-500" />
+                  <h3 className="text-base font-bold text-red-500">{t("settings.dangerZoneTitle")}</h3>
+                </div>
+                <p className="text-xs text-[var(--syn-muted)] max-w-xl leading-relaxed">
+                  {t("settings.dangerZoneDesc")}
+                </p>
               </div>
-              <p className="text-xs text-[var(--syn-muted)] max-w-xl leading-relaxed">
-                {t("settings.dangerZoneDesc")}
-              </p>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmDeleteInput("");
-                setDeleteError("");
-                setShowDeleteModal(true);
-              }}
-              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-              {t("settings.deleteAccountBtn")}
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDeleteInput("");
+                  setDeleteError("");
+                  setShowDeleteModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm flex items-center gap-2 shrink-0 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                {t("settings.deleteAccountBtn")}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1070,6 +1104,16 @@ function SettingsFormContent({
          ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "billing" && (
         <div className="space-y-8">
+          {!permissions.canManageBilling && (
+            <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-600 dark:text-purple-400 flex items-center gap-2.5">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-purple-400" />
+              <div>
+                <span className="font-bold block">{t("settings.billingRestrictedTitle") || "Plan Management Restricted"}</span>
+                <span className="text-[11px] text-[var(--syn-muted)]">{t("settings.billingRestrictedDesc") || "Upgrading subscription plans and billing is restricted to Brand Leads (Admins & Owners)."}</span>
+              </div>
+            </div>
+          )}
+
           {/* Active Plan Overview Bento */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left 2 Cols: Active Subscription Banner */}
@@ -1268,8 +1312,10 @@ function SettingsFormContent({
                         <button
                           type="button"
                           onClick={() => handleSwitchPlan(tier.id)}
-                          disabled={isUpdatingPlan}
-                          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          disabled={!permissions.canManageBilling || isUpdatingPlan}
+                          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            !permissions.canManageBilling ? "cursor-not-allowed" : "cursor-pointer"
+                          } ${
                             tier.id === "GROWTH" || tier.id === "ENTERPRISE"
                               ? "syn-btn-primary"
                               : "syn-btn-secondary"
@@ -1278,6 +1324,11 @@ function SettingsFormContent({
                           {isUpdatingPlan ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("settings.updatingPlan")}
+                            </>
+                          ) : !permissions.canManageBilling ? (
+                            <>
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>{t("settings.brandLeadRequired") || "Brand Lead Only"}</span>
                             </>
                           ) : (
                             <>
@@ -1380,6 +1431,35 @@ function SettingsFormContent({
           </div>
         </div>
       )}
+
+      {/* Brand Workspace Deletion Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showWorkspaceDeleteModal}
+        onClose={() => !isDeletingWorkspace && setShowWorkspaceDeleteModal(false)}
+        onConfirm={handleConfirmDeleteWorkspace}
+        title={t("settings.deleteWorkspace") || "Delete Workspace"}
+        description={`Are you sure you want to delete "${brandName || audit?.brandProfile?.name}" workspace? Permanently removes this brand workspace, tracked queries, and audit history.`}
+        confirmText={t("common.delete") || "Delete Workspace"}
+        cancelText={t("common.cancel") || "Cancel"}
+        variant="danger"
+        isLoading={isDeletingWorkspace}
+      >
+        <div className="p-3.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/20 shrink-0">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div className="truncate">
+              <p className="text-xs font-bold text-[var(--syn-heading)] truncate">
+                {brandName || audit?.brandProfile?.name || "Workspace"}
+              </p>
+              <p className="text-[11px] text-[var(--syn-muted)] truncate">
+                {websiteUrl || audit?.brandProfile?.websiteUrl || ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      </ConfirmationModal>
     </div>
   );
 }

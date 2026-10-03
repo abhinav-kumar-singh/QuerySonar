@@ -135,7 +135,17 @@ export function Header({ className }: HeaderProps) {
               </button>
               <button
                 type="button"
-                onClick={openAuthModal}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pathname === "/") {
+                    const scanElem = document.getElementById("scan");
+                    if (scanElem) {
+                      scanElem.scrollIntoView({ behavior: "smooth" });
+                      return;
+                    }
+                  }
+                  window.location.href = "/#scan";
+                }}
                 className="rounded-full bg-[var(--syn-btn-pri-bg)] hover:opacity-90 text-[var(--syn-btn-pri-text)] font-semibold text-sm px-5 py-2.5 transition-all shadow-sm active:scale-95 flex items-center justify-center cursor-pointer"
               >
                 {t("common.getStarted")}
@@ -265,9 +275,17 @@ export function Header({ className }: HeaderProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
                       setMobileMenuOpen(false);
-                      openAuthModal();
+                      e.preventDefault();
+                      if (pathname === "/") {
+                        const scanElem = document.getElementById("scan");
+                        if (scanElem) {
+                          scanElem.scrollIntoView({ behavior: "smooth" });
+                          return;
+                        }
+                      }
+                      window.location.href = "/#scan";
                     }}
                     className="w-full text-center py-2.5 rounded-full bg-[var(--syn-btn-pri-bg)] text-[var(--syn-btn-pri-text)] font-semibold text-sm shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
                   >

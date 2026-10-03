@@ -19,6 +19,8 @@ import {
   Check,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/language-context";
+import { useWorkspaceRole } from "@/lib/workspace-role-context";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export interface TeamMember {
   id: string;
@@ -42,6 +44,7 @@ export function WorkspaceTeamTab({
   userPlan,
 }: WorkspaceTeamTabProps) {
   const { t } = useTranslation();
+  const { permissions, role: currentRole } = useWorkspaceRole();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -175,18 +178,43 @@ export function WorkspaceTeamTab({
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    const confirmPrompt = t("settings.confirmRemoveMember") || "Are you sure you want to remove this member from the workspace?";
-    if (!confirm(confirmPrompt)) return;
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [inviteToCancel, setInviteToCancel] = useState<TeamMember | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/workspaces/team?memberId=${memberId}&workspaceId=${workspaceId}`, {
+      const res = await fetch(`/api/workspaces/team?memberId=${memberToRemove.id}&workspaceId=${workspaceId}`, {
         method: "DELETE",
       });
       if (res.ok) {
         loadTeam();
+        setMemberToRemove(null);
       }
     } catch (err) {
       console.error("Failed to remove member:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmCancelInvite = async () => {
+    if (!inviteToCancel) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/workspaces/team?memberId=${inviteToCancel.id}&workspaceId=${workspaceId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        loadTeam();
+        setInviteToCancel(null);
+      }
+    } catch (err) {
+      console.error("Failed to cancel invitation:", err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -300,7 +328,19 @@ export function WorkspaceTeamTab({
           </h3>
         </div>
 
-        {isAtLimit ? (
+        {!permissions.canManageTeam ? (
+          <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs text-sky-600 dark:text-sky-400 flex items-start gap-3">
+            <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-sky-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-xs text-[var(--syn-heading)]">
+                {t("settings.teamReadOnlyTitle") || "View-Only Team Mode"}
+              </p>
+              <p className="text-[11px] text-[var(--syn-muted)] mt-0.5">
+                {t("settings.teamReadOnlyDesc") || "Inviting collaborators and modifying roles is restricted to Brand Leads (Admins & Owners)."}
+              </p>
+            </div>
+          </div>
+        ) : isAtLimit ? (
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-3">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="flex-1">
@@ -526,6 +566,11 @@ export function WorkspaceTeamTab({
                     <span className="text-xs font-medium text-[var(--syn-muted)] px-3 py-1.5">
                       {t("settings.roleOwner") || "Workspace Owner"}
                     </span>
+                  ) : !permissions.canManageTeam ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--syn-card)] border border-[var(--syn-border)] text-xs font-medium text-[var(--syn-heading)]">
+                      <memberRoleConfig.icon className={`w-3.5 h-3.5 ${memberRoleConfig.color}`} />
+                      <span>{memberRoleConfig.title}</span>
+                    </span>
                   ) : (
                     <div className="relative" ref={memberDropdownRef}>
                       <button
@@ -576,10 +621,10 @@ export function WorkspaceTeamTab({
                     </div>
                   )}
 
-                  {m.role !== "owner" && (
+                  {m.role !== "owner" && permissions.canManageTeam && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveMember(m.id)}
+                      onClick={() => setMemberToRemove(m)}
                       title="Remove member"
                       className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                     >
@@ -633,7 +678,7 @@ export function WorkspaceTeamTab({
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     type="button"
-                    onClick={() => handleRemoveMember(inv.id)}
+                    onClick={() => setInviteToCancel(inv)}
                     className="px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                   >
                     {t("settings.cancelInviteBtn") || "Cancel Invite"}
@@ -644,6 +689,80 @@ export function WorkspaceTeamTab({
           </div>
         </div>
       )}
+
+      {/* ── Delete Member Confirmation Modal ──────────────────────── */}
+      <ConfirmationModal
+        isOpen={!!memberToRemove}
+        onClose={() => !isDeleting && setMemberToRemove(null)}
+        onConfirm={handleConfirmRemoveMember}
+        title={t("settings.confirmRemoveMemberTitle") || "Remove Team Member"}
+        description={(
+          t("settings.confirmRemoveMemberDesc") ||
+          "Are you sure you want to remove {name}? They will lose access to all audits, queries, and workspace reports immediately."
+        ).replace("{name}", memberToRemove?.name || memberToRemove?.email || "")}
+        confirmText={t("settings.removeMemberBtn") || "Remove Member"}
+        cancelText={t("common.cancel") || "Cancel"}
+        variant="danger"
+        isLoading={isDeleting}
+      >
+        {memberToRemove && (
+          <div className="p-3.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 truncate">
+              <div className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-xs font-bold border border-red-500/20 shrink-0">
+                {memberToRemove.name ? memberToRemove.name.slice(0, 2).toUpperCase() : memberToRemove.email.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-bold text-[var(--syn-heading)] truncate">
+                  {memberToRemove.name || memberToRemove.email}
+                </p>
+                <p className="text-[11px] text-[var(--syn-muted)] truncate">
+                  {memberToRemove.email}
+                </p>
+              </div>
+            </div>
+            <span className="syn-badge syn-badge-purple text-[10px] py-0.5 px-2 shrink-0">
+              {getRoleLabel(memberToRemove.role)}
+            </span>
+          </div>
+        )}
+      </ConfirmationModal>
+
+      {/* ── Cancel Invitation Confirmation Modal ───────────────────── */}
+      <ConfirmationModal
+        isOpen={!!inviteToCancel}
+        onClose={() => !isDeleting && setInviteToCancel(null)}
+        onConfirm={handleConfirmCancelInvite}
+        title={t("settings.confirmCancelInviteTitle") || "Cancel Invitation"}
+        description={(
+          t("settings.confirmCancelInviteDesc") ||
+          "Are you sure you want to cancel the pending invitation for {email}? The invitation link will immediately expire."
+        ).replace("{email}", inviteToCancel?.email || "")}
+        confirmText={t("settings.cancelInviteActionBtn") || "Cancel Invitation"}
+        cancelText={t("common.cancel") || "Cancel"}
+        variant="danger"
+        isLoading={isDeleting}
+      >
+        {inviteToCancel && (
+          <div className="p-3.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 truncate">
+              <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/20 shrink-0">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-bold text-[var(--syn-heading)] truncate">
+                  {inviteToCancel.email}
+                </p>
+                <p className="text-[11px] text-[var(--syn-muted)]">
+                  {getRoleLabel(inviteToCancel.role)}
+                </p>
+              </div>
+            </div>
+            <span className="syn-badge syn-badge-amber text-[10px] py-0.5 px-2 shrink-0">
+              {t("settings.rolePendingBadge") || "Pending"}
+            </span>
+          </div>
+        )}
+      </ConfirmationModal>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 import { AIEngineRow } from "@/components/ui/ai-engine-icons";
 import { useAuditData, AuditResult } from "@/lib/audit-storage";
 import { useTranslation } from "@/lib/i18n/language-context";
+import { useWorkspaceRole } from "@/lib/workspace-role-context";
 import { PlaceAutocomplete } from "@/components/ui/place-autocomplete";
 import {
   CategoryQueryFlow,
@@ -51,6 +52,7 @@ export function AuditDrawer({
 }: AuditDrawerProps) {
   const { audit, saveAudit } = useAuditData();
   const { t } = useTranslation();
+  const { permissions, role } = useWorkspaceRole();
   const [currentPlanKey, setCurrentPlanKey] = useState<string>("FREE");
   const [mounted, setMounted] = useState(false);
 
@@ -544,14 +546,16 @@ export function AuditDrawer({
                 </button>
                 <button
                   type="submit"
-                  disabled={!isFormValid || isScanning}
-                  className="px-6 py-2.5 rounded-xl bg-[#86EFAC] hover:bg-[#86EFAC]/90 text-neutral-950 text-xs font-bold disabled:opacity-40 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  disabled={!permissions.canRunAudit || !isFormValid || isScanning}
+                  className="px-6 py-2.5 rounded-xl bg-[#86EFAC] hover:bg-[#86EFAC]/90 text-neutral-950 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   {isScanning ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>{t("common.loading")}</span>
                     </>
+                  ) : !permissions.canRunAudit ? (
+                    <span>{t("settings.viewerScanRestricted") || "Requires GEO Analyst or Brand Lead"}</span>
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5 fill-neutral-950" />

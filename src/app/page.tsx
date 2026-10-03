@@ -26,8 +26,11 @@ import {
   MessageSquare,
   Layers,
   Bot,
+  Tag,
+  FileText,
 } from "lucide-react";
-import { savePendingScan } from "@/lib/audit-storage";
+import { savePendingScan, saveAuditFormDraft } from "@/lib/audit-storage";
+import type { CategoryItem } from "@/components/dashboard/category-query-flow";
 import {
   RevealOnScroll,
   CountUp,
@@ -54,64 +57,97 @@ export default function LandingPage() {
     }
   };
 
-  // Scan state
+  // Category Discovery Scan State
   const [brand, setBrand] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [targetLocation, setTargetLocation] = useState("");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("SaaS / Productivity");
-  const [isGeneratingQueries, setIsGeneratingQueries] = useState(false);
-  const [suggestedQueries, setSuggestedQueries] = useState<
-    Array<{ queryText: string; type: string; personaLabel: string }>
-  >([]);
+  const [isDiscoveringCategories, setIsDiscoveringCategories] = useState(false);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [selectedCategoryNames, setSelectedCategoryNames] = useState<string[]>([]);
+  const [brandSummary, setBrandSummary] = useState<string>("");
   const [detectedCompetitors, setDetectedCompetitors] = useState<string[]>([]);
-  const [autoQueryError, setAutoQueryError] = useState("");
+  const [discoveryError, setDiscoveryError] = useState("");
 
+  const maxCategories = 3; // Free Tier Limit
   const scanSectionRef = useRef<HTMLElement>(null);
 
-  const handleAutoGenerateQueries = async () => {
+  const handleDiscoverCategories = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!brand.trim()) return;
-    setIsGeneratingQueries(true);
-    setAutoQueryError("");
+
+    setIsDiscoveringCategories(true);
+    setDiscoveryError("");
+
     try {
-      const res = await fetch("/api/queries/generate", {
+      const res = await fetch("/api/categories/discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brandName: brand.trim(),
-          websiteUrl: websiteUrl.trim(),
-          categoryHint: category,
+          websiteUrl: websiteUrl.trim() || undefined,
+          targetLocation: targetLocation.trim() || undefined,
         }),
       });
+
       const result = await res.json();
-      if (result.success && result.data) {
-        setSuggestedQueries(result.data.suggestedQueries || []);
+      if (res.ok && result.success && result.data) {
+        const discoveredCats: CategoryItem[] = result.data.categories || [];
+        setCategories(discoveredCats);
+        setBrandSummary(result.data.summary || "");
         setDetectedCompetitors(result.data.detectedCompetitors || []);
-        if (result.data.category) setCategory(result.data.category);
-        if (result.data.suggestedQueries?.[0]?.queryText) {
-          setQuery(result.data.suggestedQueries[0].queryText);
-        }
+
+        const autoSelected = discoveredCats.filter((c) => c.isAutoSelected).map((c) => c.name);
+        const initial = autoSelected.length > 0
+          ? autoSelected.slice(0, maxCategories)
+          : discoveredCats.slice(0, maxCategories).map((c) => c.name);
+        setSelectedCategoryNames(initial);
       } else {
-        setAutoQueryError(result.error || "Could not generate questions");
+        setDiscoveryError(result.error || t("landing.discoveryError"));
       }
     } catch {
-      setAutoQueryError("Failed to generate questions. Please try again or type one manually.");
+      setDiscoveryError(t("landing.discoveryError"));
     } finally {
-      setIsGeneratingQueries(false);
+      setIsDiscoveringCategories(false);
     }
   };
 
-  const handleScan = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!brand.trim() || !query.trim()) return;
+  const handleToggleCategory = (catName: string) => {
+    if (selectedCategoryNames.includes(catName)) {
+      setSelectedCategoryNames(selectedCategoryNames.filter((n) => n !== catName));
+    } else {
+      if (selectedCategoryNames.length >= maxCategories) return;
+      setSelectedCategoryNames([...selectedCategoryNames, catName]);
+    }
+  };
 
+  const handleGenerateQueriesAndProceed = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!brand.trim() || selectedCategoryNames.length === 0) return;
+
+    const chosenCategories = categories.filter((c) => selectedCategoryNames.includes(c.name));
+    const primaryCat = selectedCategoryNames[0] || brand.trim();
+
+    // Persist draft form state for instant hydration post-login
+    saveAuditFormDraft({
+      brandName: brand.trim(),
+      websiteUrl: websiteUrl.trim(),
+      targetLocation: targetLocation.trim() || undefined,
+      queriesList: [],
+      categories: chosenCategories,
+      brandSummary,
+      detectedCompetitors,
+      category: primaryCat,
+    });
+
+    // Save pending scan intent
     savePendingScan({
       brand: brand.trim(),
       websiteUrl: websiteUrl.trim(),
       targetLocation: targetLocation.trim() || undefined,
-      query: query.trim(),
-      queries: suggestedQueries.length > 0 ? suggestedQueries.map((q) => q.queryText) : [query.trim()],
-      category: category.trim(),
+      query: `Best ${primaryCat} solutions & alternatives`,
+      queries: selectedCategoryNames.map((c) => `Best ${c} tools & alternatives`),
+      category: primaryCat,
+      competitors: detectedCompetitors,
     });
 
     if (session?.user) {
@@ -747,182 +783,222 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleScan} className="syn-card p-6 sm:p-10 shadow-xl">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start mb-4">
-              <div className="md:col-span-6 flex flex-col gap-2">
-                <label htmlFor="brand-input" className="text-xs font-semibold text-[var(--syn-heading)]">
-                  {t("landing.brandNameLabel")} <span className="text-emerald-500">*</span>
-                </label>
-                <input
-                  id="brand-input"
-                  type="text"
-                  placeholder={t("landing.brandPlaceholderInput")}
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  required
-                  className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
+          <div className="syn-card p-6 sm:p-10 shadow-xl space-y-6">
+            {/* Input fields */}
+            <form onSubmit={handleDiscoverCategories} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                <div className="md:col-span-6 flex flex-col gap-2">
+                  <label htmlFor="brand-input" className="text-xs font-semibold text-[var(--syn-heading)]">
+                    {t("landing.brandNameLabel")} <span className="text-emerald-500">*</span>
+                  </label>
+                  <input
+                    id="brand-input"
+                    type="text"
+                    placeholder={t("landing.brandPlaceholderInput")}
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    required
+                    className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="md:col-span-6 flex flex-col gap-2">
+                  <label htmlFor="url-input" className="text-xs font-semibold text-[var(--syn-heading)]">
+                    {t("landing.websiteUrlLabel")} <span className="text-[var(--syn-muted)] font-normal">{t("landing.optionalText")}</span>
+                  </label>
+                  <input
+                    id="url-input"
+                    type="text"
+                    placeholder={t("landing.urlPlaceholderInput")}
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                {/* Target Geographic Place Autocomplete */}
+                <div className="md:col-span-12">
+                  <PlaceAutocomplete
+                    value={targetLocation}
+                    onChange={(loc) => setTargetLocation(loc)}
+                    label={t("landing.targetMarketLabel")}
+                    sublabel=""
+                    placeholder={t("landing.targetMarketPlaceholder")}
+                    inputClassName="py-3.5"
+                  />
+                </div>
               </div>
 
-              <div className="md:col-span-6 flex flex-col gap-2">
-                <label htmlFor="url-input" className="text-xs font-semibold text-[var(--syn-heading)]">
-                  {t("landing.websiteUrlLabel")} <span className="text-[var(--syn-muted)] font-normal">{t("landing.optionalText")}</span>
-                </label>
-                <input
-                  id="url-input"
-                  type="text"
-                  placeholder={t("landing.urlPlaceholderInput")}
-                  value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
-              </div>
+              {/* Discover Action Trigger */}
+              <div className="flex items-center justify-between pt-2 flex-wrap gap-3">
+                <div className="text-xs text-[var(--syn-muted)]">
+                  <span>{t("landing.checksAll6Engines")}</span>
+                </div>
 
-              {/* Target Geographic Place Autocomplete */}
-              <div className="md:col-span-7">
-                <PlaceAutocomplete
-                  value={targetLocation}
-                  onChange={(loc) => setTargetLocation(loc)}
-                  label="Target Market / Place"
-                  sublabel=""
-                  placeholder="Search country, city, or region (e.g. United States, Berlin, Tokyo)..."
-                  inputClassName="py-3.5"
-                />
-              </div>
-
-              <div className="md:col-span-5 flex flex-col gap-2">
-                <label htmlFor="category-select" className="text-xs font-semibold text-[var(--syn-heading)]">
-                  {t("landing.industryCategoryLabel")}
-                </label>
-                <select
-                  id="category-select"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                <button
+                  type="submit"
+                  disabled={!brand.trim() || isDiscoveringCategories}
+                  className="v2-btn v2-btn-primary ml-auto disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
                 >
-                  <option value="SaaS / Productivity">SaaS / Productivity</option>
-                  <option value="Developer Tools">Developer Tools</option>
-                  <option value="Fintech / Banking">Fintech / Banking</option>
-                  <option value="E-commerce & Retail">E-commerce & Retail</option>
-                  <option value="Healthcare / MedTech">Healthcare / MedTech</option>
-                  <option value="Cybersecurity">Cybersecurity</option>
-                  <option value="Consumer Tech">Consumer Tech</option>
-                </select>
+                  {isDiscoveringCategories ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {t("landing.discoveringCategories")}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {t("landing.discoverCategoriesBtn")}
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
+            </form>
 
-            {/* Gemini Auto-Generate Action Trigger */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border-subtle)]">
-              <div className="flex items-center gap-2 text-xs text-[var(--syn-muted)]">
-                <Sparkles className="w-4 h-4 text-emerald-500 shrink-0 animate-pulse" />
-                <span>{t("landing.geminiPromptTip")}</span>
+            {/* Error banner */}
+            {discoveryError && (
+              <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl animate-in fade-in duration-200">
+                {discoveryError}
               </div>
+            )}
 
-              <button
-                type="button"
-                onClick={handleAutoGenerateQueries}
-                disabled={!brand.trim() || isGeneratingQueries}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
-              >
-                {isGeneratingQueries ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    {t("landing.autoGenLoading")}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    {t("landing.autoGenBtn")}
-                  </>
+            {/* Discovered Categories & Context Area */}
+            {categories.length > 0 && (
+              <div className="p-4 sm:p-6 rounded-2xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] space-y-5 animate-in fade-in duration-300">
+                {/* Market Summary Context */}
+                {brandSummary && (
+                  <div className="p-3.5 rounded-xl bg-[var(--syn-card)] border border-[var(--syn-border)] text-xs leading-relaxed flex items-start gap-3 shadow-xs">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-mono uppercase font-bold text-[var(--syn-muted)] block mb-0.5">
+                        {t("landing.brandSummaryLabel")}
+                      </span>
+                      <p className="text-[var(--syn-heading)] text-xs leading-relaxed">{brandSummary}</p>
+                    </div>
+                  </div>
                 )}
-              </button>
-            </div>
 
-            {/* Generated Query Pills Selection */}
-            {suggestedQueries.length > 0 && (
-              <div className="mb-5 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {t("landing.suggestedQuestionsHeader")} ({suggestedQueries.length})
-                  </span>
-                  <span className="text-[11px] text-[var(--syn-muted)]">{t("landing.clickQuestionTip")}</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {suggestedQueries.map((sq, idx) => {
-                    const isSelected = query === sq.queryText;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setQuery(sq.queryText)}
-                        className={`text-left p-3 rounded-lg text-xs transition-all flex flex-col gap-1 cursor-pointer ${
-                          isSelected
-                            ? "bg-emerald-500/20 border-2 border-emerald-500 text-[var(--syn-heading)] shadow-sm"
-                            : "bg-[var(--syn-card-inner)] border border-[var(--syn-border-subtle)] text-[var(--syn-muted)] hover:border-emerald-500/40 hover:text-[var(--syn-heading)]"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-mono text-[10px] uppercase font-bold text-emerald-400">
-                            {sq.personaLabel}
-                          </span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                        </div>
-                        <span className="leading-snug font-medium">&ldquo;{sq.queryText}&rdquo;</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
+                {/* Detected Competitors */}
                 {detectedCompetitors.length > 0 && (
-                  <div className="pt-2 border-t border-emerald-500/10 flex items-center gap-2 flex-wrap text-[11px] text-[var(--syn-muted)]">
-                    <span className="font-mono text-emerald-400 font-semibold">{t("landing.detectedCompetitorsLabel")}</span>
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--syn-muted)]">
+                    <span className="font-mono text-emerald-400 font-semibold text-[11px] uppercase tracking-wider">
+                      {t("landing.detectedCompetitorsLabel")}
+                    </span>
                     {detectedCompetitors.map((comp, cIdx) => (
-                      <span key={cIdx} className="px-2 py-0.5 rounded-md bg-[var(--syn-card-inner)] border border-[var(--syn-border-subtle)] text-[var(--syn-heading)] font-medium">
+                      <span
+                        key={cIdx}
+                        className="px-2.5 py-1 rounded-lg bg-[var(--syn-card)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-xs font-medium"
+                      >
                         {comp}
                       </span>
                     ))}
                   </div>
                 )}
+
+                {/* Category Selection Area */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-emerald-500" />
+                      <h4 className="text-xs sm:text-sm font-bold text-[var(--syn-heading)]">
+                        {t("landing.selectCategoriesHeader")} ({t("landing.freeLimitBadge")})
+                      </h4>
+                    </div>
+                    <span
+                      className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border transition-all ${
+                        selectedCategoryNames.length >= maxCategories
+                          ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
+                          : "bg-emerald-500/15 border-emerald-500/30 text-emerald-500"
+                      }`}
+                    >
+                      {selectedCategoryNames.length}/{maxCategories} {t("landing.selectedCount")}
+                    </span>
+                  </div>
+
+                  {/* Limit Notice */}
+                  {selectedCategoryNames.length >= maxCategories && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in duration-200">
+                      <span className="font-bold shrink-0">{t("landing.freeLimitBadge")}:</span>
+                      <span className="text-[var(--syn-muted)] text-[11px]">
+                        {t("landing.freeLimitNotice")}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Grid of Categories */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {categories.map((cat) => {
+                      const isSelected = selectedCategoryNames.includes(cat.name);
+                      const isMaxReached = selectedCategoryNames.length >= maxCategories;
+                      const isDisabled = !isSelected && isMaxReached;
+
+                      return (
+                        <div
+                          key={cat.id}
+                          onClick={() => {
+                            if (!isDisabled) {
+                              handleToggleCategory(cat.name);
+                            }
+                          }}
+                          aria-disabled={isDisabled}
+                          className={`p-3.5 rounded-xl border flex items-center gap-3 transition-all duration-150 select-none ${
+                            isSelected
+                              ? "bg-emerald-500/10 border-emerald-500/50 text-[var(--syn-heading)] shadow-xs scale-[1.005] cursor-pointer"
+                              : isDisabled
+                              ? "bg-[var(--syn-card)]/40 border-[var(--syn-border)]/40 opacity-40 cursor-not-allowed text-[var(--syn-muted)]"
+                              : "bg-[var(--syn-card)] border-[var(--syn-border)] text-[var(--syn-muted)] hover:border-emerald-500/40 hover:text-[var(--syn-heading)] cursor-pointer"
+                          }`}
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all ${
+                              isSelected
+                                ? "bg-[#86EFAC] text-neutral-950 font-bold shadow-xs"
+                                : isDisabled
+                                ? "border border-[var(--syn-border)]/40 bg-[var(--syn-card-inner)]/30 opacity-50"
+                                : "border border-[var(--syn-border)] bg-[var(--syn-card-inner)]"
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+
+                          <span
+                            className={`text-xs font-semibold leading-snug truncate ${
+                              isSelected
+                                ? "text-emerald-500 font-bold"
+                                : isDisabled
+                                ? "text-[var(--syn-muted)]/70"
+                                : "text-[var(--syn-heading)]"
+                            }`}
+                          >
+                            {cat.name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Final Launch / Auth Gate Trigger */}
+                <div className="pt-4 border-t border-[var(--syn-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-xs text-[var(--syn-muted)] text-center sm:text-left">
+                    <span>{t("landing.signInPromptTip")}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateQueriesAndProceed}
+                    disabled={selectedCategoryNames.length === 0}
+                    className="v2-btn v2-btn-primary w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+                  >
+                    <span>{t("landing.generateQueriesBtn")}</span>
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
               </div>
             )}
-
-            {autoQueryError && (
-              <div className="mb-4 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
-                {autoQueryError}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2 mb-4">
-              <label htmlFor="query-input" className="text-xs font-semibold text-[var(--syn-heading)]">
-                {t("landing.activeBuyerSearchQuestion")}
-              </label>
-              <input
-                id="query-input"
-                type="text"
-                placeholder={t("landing.activeBuyerSearchPlaceholder")}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                required
-                className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-6 border-t border-[var(--syn-border-subtle)] mt-6 flex-wrap gap-4">
-              <div className="text-xs text-[var(--syn-muted)]">
-                <span>{t("landing.checksAll6Engines")}</span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={!brand.trim() || !query.trim()}
-                className="v2-btn v2-btn-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {t("landing.runFreeScanButton")} <ArrowRight size={16} />
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </section>
 

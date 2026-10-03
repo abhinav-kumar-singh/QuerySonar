@@ -22,6 +22,7 @@ import { useAuditData, StoredBrand } from "@/lib/audit-storage";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { AuditDrawer } from "@/components/dashboard/audit-drawer";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export function WorkspaceSwitcher() {
   const { audit, brands, switchBrand, deleteBrand, saveAudit } = useAuditData();
@@ -105,22 +106,31 @@ export function WorkspaceSwitcher() {
     };
   }, [isOpen, isCreateDrawerOpen, isUpgradeModalOpen]);
 
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<StoredBrand | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleSelectWorkspace = (brandId: string) => {
     switchBrand(brandId);
     setIsOpen(false);
   };
 
-  const handleDeleteWorkspace = async (e: React.MouseEvent, brand: StoredBrand) => {
+  const handleDeleteWorkspace = (e: React.MouseEvent, brand: StoredBrand) => {
     e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete "${brand.name}" brand workspace and all its audit data?`)) {
-      return;
-    }
+    setIsOpen(false);
+    setWorkspaceToDelete(brand);
+  };
+
+  const handleConfirmDeleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
+    setIsDeleting(true);
     try {
-      await fetch(`/api/workspaces?id=${brand.id}`, { method: "DELETE" });
+      await fetch(`/api/workspaces?id=${workspaceToDelete.id}`, { method: "DELETE" });
     } catch (err) {
       console.warn("Failed to delete workspace on server:", err);
     }
-    deleteBrand(brand.id);
+    deleteBrand(workspaceToDelete.id);
+    setWorkspaceToDelete(null);
+    setIsDeleting(false);
   };
 
   const handleOpenCreateModal = () => {
@@ -344,6 +354,37 @@ export function WorkspaceSwitcher() {
         </div>,
         document.body
       )}
+
+      {/* Delete Workspace Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!workspaceToDelete}
+        onClose={() => !isDeleting && setWorkspaceToDelete(null)}
+        onConfirm={handleConfirmDeleteWorkspace}
+        title={t("settings.deleteWorkspace") || "Delete Workspace"}
+        description={`Are you sure you want to delete "${workspaceToDelete?.name}" brand workspace and all its audit data? This action cannot be undone.`}
+        confirmText={t("common.delete") || "Delete Workspace"}
+        cancelText={t("common.cancel") || "Cancel"}
+        variant="danger"
+        isLoading={isDeleting}
+      >
+        {workspaceToDelete && (
+          <div className="p-3.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-xs font-bold border border-red-500/20 shrink-0">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-bold text-[var(--syn-heading)] truncate">
+                  {workspaceToDelete.name}
+                </p>
+                <p className="text-[11px] text-[var(--syn-muted)] truncate">
+                  {workspaceToDelete.websiteUrl}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </ConfirmationModal>
     </>
   );
 }

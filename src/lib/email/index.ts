@@ -1,9 +1,17 @@
 import { Resend } from "resend";
+import https from "https";
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const fromEmail = process.env.EMAIL_FROM || "QuerySonar <onboarding@resend.dev>";
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+function getResendApiKey() {
+  return process.env.RESEND_API_KEY;
+}
+
+function getFromEmail() {
+  return process.env.EMAIL_FROM || "QuerySonar <onboarding@resend.dev>";
+}
+
+function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+}
 
 export interface SendInviteEmailParams {
   to: string;
@@ -147,6 +155,71 @@ export function buildInviteEmailHtml({
   `.trim();
 }
 
+async function sendViaDirectHttps({
+  apiKey,
+  from,
+  to,
+  subject,
+  html,
+}: {
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      html,
+    });
+
+    const req = https.request(
+      "https://api.resend.com/emails",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+        rejectUnauthorized: false,
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+              console.log(`[EmailService] Resend email dispatched successfully. ID: ${parsed.id}`);
+              resolve({ success: true, id: parsed.id });
+            } else {
+              console.error("[EmailService] Resend API error response:", data);
+              resolve({
+                success: false,
+                error: parsed.message || parsed.error || `HTTP ${res.statusCode}`,
+              });
+            }
+          } catch {
+            resolve({ success: false, error: data || `HTTP ${res.statusCode}` });
+          }
+        });
+      }
+    );
+
+    req.on("error", (err) => {
+      console.error("[EmailService] Direct HTTPS error:", err);
+      resolve({ success: false, error: err.message });
+    });
+
+    req.write(payload);
+    req.end();
+  });
+}
+
 export async function sendWorkspaceInviteEmail({
   to,
   inviterName,
@@ -154,10 +227,13 @@ export async function sendWorkspaceInviteEmail({
   role,
   inviteToken,
 }: SendInviteEmailParams): Promise<{ success: boolean; id?: string; error?: string; simulated?: boolean; inviteUrl: string }> {
+  const appUrl = getAppUrl();
   const inviteUrl = `${appUrl}/invite/${inviteToken}`;
+  const apiKey = getResendApiKey();
+  const fromEmail = getFromEmail();
 
   // If no API key configured in dev, simulate cleanly
-  if (!resend) {
+  if (!apiKey) {
     console.log(`\n======================================================`);
     console.log(`📨 [EmailService] Resend API key not set in .env`);
     console.log(`✉️  Simulating invitation email to: ${to}`);
@@ -180,29 +256,29 @@ export async function sendWorkspaceInviteEmail({
       inviteUrl,
     });
 
-    const response = await resend.emails.send({
+    const resendResult = await sendViaDirectHttps({
+      apiKey,
       from: fromEmail,
       to,
       subject: `You've been invited to join ${brandName} on QuerySonar`,
       html,
     });
 
-    if (response.error) {
-      console.error("[EmailService] Resend error:", response.error);
+    if (!resendResult.success) {
       return {
         success: false,
-        error: response.error.message,
+        error: resendResult.error,
         inviteUrl,
       };
     }
 
     return {
       success: true,
-      id: response.data?.id,
+      id: resendResult.id,
       inviteUrl,
     };
   } catch (err: unknown) {
-    console.error("[EmailService] Failed to send email via Resend:", err);
+    console.error("[EmailService] Failed to dispatch invite email:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to dispatch email",

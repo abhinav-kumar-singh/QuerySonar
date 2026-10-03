@@ -17,12 +17,21 @@ import { useAuditData } from "@/lib/audit-storage";
 import { NotificationPopover } from "@/components/layout/notification-popover";
 import { HeaderSearch } from "@/components/layout/header-search";
 import { PlanSwitcher } from "@/components/layout/plan-switcher";
-import { UserProfilePopover } from "@/components/layout/user-profile-popover";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { UserProfilePopover } from "@/components/layout/user-profile-popover";
+import { WorkspaceRoleProvider } from "@/lib/workspace-role-context";
 import { useTranslation } from "@/lib/i18n/language-context";
 import "@/app/dashboard/synetica-dashboard.css";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <WorkspaceRoleProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </WorkspaceRoleProvider>
+  );
+}
+
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { audit } = useAuditData();
   const { t } = useTranslation();
