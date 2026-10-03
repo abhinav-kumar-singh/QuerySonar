@@ -30,8 +30,8 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const openAuthModal = useCallback(() => {
-    setIsOpen(true);
-  }, []);
+    router.push("/auth/signin");
+  }, [router]);
 
   const closeAuthModal = useCallback(() => {
     setIsOpen(false);

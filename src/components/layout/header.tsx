@@ -126,13 +126,12 @@ export function Header({ className }: HeaderProps) {
             </div>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={openAuthModal}
+              <Link
+                href="/auth/signin"
                 className="text-sm font-semibold text-[var(--syn-muted)] hover:text-[var(--syn-heading)] px-3 py-2 transition-colors cursor-pointer"
               >
                 {t("common.signIn")}
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={(e) => {
@@ -263,16 +262,13 @@ export function Header({ className }: HeaderProps) {
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      openAuthModal();
-                    }}
+                  <Link
+                    href="/auth/signin"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="w-full text-center py-2.5 text-sm font-semibold text-[var(--syn-muted)] hover:bg-[var(--syn-card-subtle)] rounded-xl transition-colors cursor-pointer"
                   >
                     {t("common.signIn")}
-                  </button>
+                  </Link>
                   <button
                     type="button"
                     onClick={(e) => {

@@ -53,7 +53,7 @@ export default function LandingPage() {
     if (session?.user) {
       router.push("/dashboard");
     } else {
-      openAuthModal();
+      router.push("/auth/signin");
     }
   };
 
@@ -153,7 +153,7 @@ export default function LandingPage() {
     if (session?.user) {
       router.push("/dashboard");
     } else {
-      openAuthModal();
+      router.push("/auth/signin");
     }
   };
 
