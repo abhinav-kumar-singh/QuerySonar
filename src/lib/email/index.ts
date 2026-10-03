@@ -286,3 +286,289 @@ export async function sendWorkspaceInviteEmail({
     };
   }
 }
+
+export function buildPasswordResetEmailHtml({
+  resetUrl,
+}: {
+  resetUrl: string;
+}): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password - QuerySonar</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0b0f17; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0b0f17; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" max-width="580" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #111827; border: 1px solid #1f2937; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+          <!-- Header Banner -->
+          <tr>
+            <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #1f2937; text-align: left;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <div style="display: inline-block; padding: 6px 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; color: #10b981; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                      ✦ QuerySonar Security
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+                Password Reset Request
+              </h1>
+              <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.5;">
+                We received a request to reset the password for your QuerySonar account.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Action CTA Box -->
+          <tr>
+            <td style="padding: 32px; text-align: center;">
+              <p style="margin: 0 0 24px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6; text-align: left;">
+                Click the button below to choose a new password. For security, this link will expire in <strong>1 hour</strong>.
+              </p>
+              
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}" style="display: inline-block; background-color: #10b981; color: #022c22; font-weight: 700; font-size: 14px; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); transition: background-color 0.2s;">
+                      Reset My Password →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 24px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.5; text-align: left;">
+                If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Direct Link Fallback -->
+          <tr>
+            <td style="padding: 0 32px 32px 32px; text-align: left;">
+              <div style="background-color: #0b0f17; border: 1px solid #1f2937; border-radius: 8px; padding: 12px 16px;">
+                <p style="margin: 0 0 6px 0; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Alternative link:
+                </p>
+                <p style="margin: 0; font-size: 12px; word-break: break-all;">
+                  <a href="${resetUrl}" style="color: #10b981; text-decoration: underline;">
+                    ${resetUrl}
+                  </a>
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; background-color: #0d131f; border-top: 1px solid #1f2937; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #64748b;">
+                QuerySonar · Generative Engine Optimization & AI Intelligence
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendPasswordResetEmail({
+  to,
+  resetToken,
+}: {
+  to: string;
+  resetToken: string;
+}): Promise<{ success: boolean; id?: string; error?: string; simulated?: boolean; resetUrl: string }> {
+  const appUrl = getAppUrl();
+  const resetUrl = `${appUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(to)}`;
+  const apiKey = getResendApiKey();
+  const fromEmail = getFromEmail();
+
+  // If no API key configured in dev, simulate cleanly
+  if (!apiKey) {
+    console.log(`\n======================================================`);
+    console.log(`📨 [EmailService] Resend API key not set in .env`);
+    console.log(`✉️  Simulating password reset email to: ${to}`);
+    console.log(`🔗  Reset URL: ${resetUrl}`);
+    console.log(`======================================================\n`);
+
+    return {
+      success: true,
+      simulated: true,
+      resetUrl,
+    };
+  }
+
+  try {
+    const html = buildPasswordResetEmailHtml({ resetUrl });
+
+    const resendResult = await sendViaDirectHttps({
+      apiKey,
+      from: fromEmail,
+      to,
+      subject: `Reset your QuerySonar password`,
+      html,
+    });
+
+    if (!resendResult.success) {
+      return {
+        success: false,
+        error: resendResult.error,
+        resetUrl,
+      };
+    }
+
+    return {
+      success: true,
+      id: resendResult.id,
+      resetUrl,
+    };
+  } catch (err: unknown) {
+    console.error("[EmailService] Failed to dispatch password reset email:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to dispatch email",
+      resetUrl,
+    };
+  }
+}
+
+export function buildVerificationOtpEmailHtml({
+  code,
+}: {
+  code: string;
+}): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your QuerySonar Account</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0b0f17; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0b0f17; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" max-width="580" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #111827; border: 1px solid #1f2937; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+          <!-- Header Banner -->
+          <tr>
+            <td style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #1f2937; text-align: left;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <div style="display: inline-block; padding: 6px 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; color: #10b981; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                      ✦ Account Verification
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <h1 style="margin: 20px 0 8px 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+                Verify Your Email Address
+              </h1>
+              <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.5;">
+                Welcome to QuerySonar! Use the 6-digit verification code below to complete your registration.
+              </p>
+            </td>
+          </tr>
+
+          <!-- OTP Code Display Card -->
+          <tr>
+            <td style="padding: 36px 32px; text-align: center;">
+              <p style="margin: 0 0 20px 0; font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">
+                Your Verification Code
+              </p>
+              
+              <div style="display: inline-block; background-color: #06090e; border: 2px solid #10b981; border-radius: 16px; padding: 18px 36px; letter-spacing: 8px; font-size: 32px; font-weight: 900; font-family: monospace; color: #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);">
+                ${code}
+              </div>
+
+              <p style="margin: 24px 0 0 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                This code will expire in <strong style="color: #e2e8f0;">15 minutes</strong>.<br>If you didn't create a QuerySonar account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; background-color: #0d131f; border-top: 1px solid #1f2937; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #64748b;">
+                QuerySonar · Generative Engine Optimization & AI Search Intelligence
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendVerificationOtpEmail({
+  to,
+  code,
+}: {
+  to: string;
+  code: string;
+}): Promise<{ success: boolean; id?: string; error?: string; simulated?: boolean }> {
+  const apiKey = getResendApiKey();
+  const fromEmail = getFromEmail();
+
+  // If no API key configured in dev, simulate cleanly in logs
+  if (!apiKey) {
+    console.log(`\n======================================================`);
+    console.log(`📨 [EmailService] Resend API key not set in .env`);
+    console.log(`✉️  Simulating Email Verification OTP to: ${to}`);
+    console.log(`🔑  Verification Code: ${code}`);
+    console.log(`======================================================\n`);
+
+    return {
+      success: true,
+      simulated: true,
+    };
+  }
+
+  try {
+    const html = buildVerificationOtpEmailHtml({ code });
+
+    const resendResult = await sendViaDirectHttps({
+      apiKey,
+      from: fromEmail,
+      to,
+      subject: `${code} is your QuerySonar verification code`,
+      html,
+    });
+
+    if (!resendResult.success) {
+      return {
+        success: false,
+        error: resendResult.error,
+      };
+    }
+
+    return {
+      success: true,
+      id: resendResult.id,
+    };
+  } catch (err: unknown) {
+    console.error("[EmailService] Failed to dispatch verification OTP email:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to dispatch email",
+    };
+  }
+}
+
+

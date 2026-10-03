@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   LayoutDashboard,
@@ -13,10 +14,8 @@ import {
   Check,
   Loader2,
   Mail,
-  Lock,
-  Eye,
-  EyeOff,
   CheckCircle2,
+  AlertCircle,
   Trophy,
   Smile,
   Bot,
@@ -25,6 +24,11 @@ import {
   BookOpen,
   Code2,
   ChevronRight,
+  ArrowRight,
+  KeyRound,
+  ShieldCheck,
+  RefreshCw,
+  Edit3,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { AIEngineRow } from "@/components/ui/ai-engine-icons";
@@ -37,11 +41,26 @@ import {
 
 export default function SignInPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+
+  // Step: "email" | "otp"
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailSentNotice, setEmailSentNotice] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+
+  // Cooldown countdown timer for resending OTP
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   // Interactive Mini QuerySonar App State
   const [activeTab, setActiveTab] = useState<
@@ -69,21 +88,114 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      setAuthError(null);
       await signIn("google", { callbackUrl: "/dashboard" });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Sign in error:", err);
+      setAuthError("Failed to connect with Google. Please try again.");
       setLoading(false);
     }
   };
 
-  const handleEmailSignIn = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setAuthError("Please provide your email address.");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setEmailSentNotice(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "Failed to send login code. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      setStep("otp");
+      setAuthSuccess(t("auth.loginCodeSentSuccess") || "6-digit verification code sent to your inbox.");
+      setCooldown(30);
+    } catch (err: any) {
+      console.error("Send OTP error:", err);
+      setAuthError("Failed to send login code. Please check your connection.");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (cooldown > 0 || isResending) return;
+    setIsResending(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "Failed to resend code.");
+      } else {
+        setAuthSuccess(t("auth.loginCodeSentSuccess") || "6-digit verification code sent to your inbox.");
+        setCooldown(30);
+      }
+    } catch (err: any) {
+      setAuthError("Failed to resend code. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedOtp = otpCode.trim();
+
+    if (trimmedOtp.length !== 6) {
+      setAuthError("Please enter the complete 6-digit verification code.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        email: trimmedEmail,
+        code: trimmedOtp,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setAuthError("Invalid or expired login code. Please check the code or request a new one.");
+        setLoading(false);
+        return;
+      }
+
+      setAuthSuccess("Authentication successful! Redirecting to dashboard...");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      console.error("Sign in error:", err);
+      setAuthError("Failed to verify code. Please try again.");
+      setLoading(false);
+    }
   };
 
   const personaQueries = [
@@ -186,154 +298,235 @@ export default function SignInPage() {
     <div className="v2 synetica-shell w-full flex-1 flex flex-col justify-center items-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-[var(--syn-bg,#08080A)] text-[var(--syn-text,#D4D4D8)]">
       {/* Large Expansive Split Screen Card */}
       <div className="max-w-[1480px] w-full mx-auto">
-        <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[760px]">
+        <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[780px] lg:min-h-[820px]">
           
           {/* ═══════════════════════════════════════════════════════════════
-              LEFT COLUMN: AUTHENTICATION / LOGIN FORM (Roomy & High-End)
+              LEFT COLUMN: PASSWORDLESS OTP AUTHENTICATION (Zero Layout Shift)
               ═══════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-5 p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--syn-border)] bg-[var(--syn-card)]">
-            <div className="my-auto py-4">
-              {/* Form Title */}
-              <div className="mb-8">
-                <span className="v2-badge-pill mb-3 text-xs font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20 px-3 py-1">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {t("auth.badgeIntelligence")}
+          <div className="lg:col-span-5 p-8 sm:p-12 lg:p-14 flex flex-col justify-between h-full min-h-[660px] border-b lg:border-b-0 lg:border-r border-[var(--syn-border)] bg-[var(--syn-card)]">
+            <div className="my-auto py-2 w-full">
+              
+              {/* Form Title & Context Badge (Locked Height min-h-[110px]) */}
+              <div className="mb-6 min-h-[110px] flex flex-col justify-start">
+                <span className="v2-badge-pill mb-2.5 text-xs font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20 px-3 py-1 w-fit">
+                  {step === "otp" ? (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Email Verification
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {t("auth.badgeIntelligence")}
+                    </>
+                  )}
                 </span>
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--syn-heading)] mb-3">
-                  {t("auth.readyToDominate")}
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--syn-heading)] mb-2 min-h-[40px] flex items-center">
+                  {step === "otp"
+                    ? t("auth.checkInboxTitle")
+                    : t("auth.passwordlessTitle")}
                 </h1>
-                <p className="text-base text-[var(--syn-muted)] leading-relaxed">
-                  {t("auth.signInDesc")}
+                <p className="text-base text-[var(--syn-muted)] leading-relaxed min-h-[48px]">
+                  {step === "otp" ? (
+                    <>
+                      {t("auth.checkInboxDesc")}{" "}
+                      <strong className="text-[var(--syn-heading)]">{email}</strong>.
+                    </>
+                  ) : (
+                    t("auth.passwordlessSubtitle")
+                  )}
                 </p>
               </div>
 
-              {/* Email & Password Form */}
-              <form onSubmit={handleEmailSignIn} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--syn-heading)] block">
-                    {t("auth.emailLabel")}
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t("auth.emailPlaceholder")}
-                      className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
-                    />
-                  </div>
+              {/* Error or Success Alerts */}
+              {authError && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs flex items-start gap-2.5 animate-in fade-in duration-150">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{authError}</span>
                 </div>
+              )}
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+              {authSuccess && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs flex items-center gap-2.5 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>{authSuccess}</span>
+                </div>
+              )}
+
+              {/* STEP 1: EMAIL ENTRY */}
+              {step === "email" ? (
+                <form onSubmit={handleSendOtp} className="space-y-4">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[var(--syn-heading)] block">
-                      {t("auth.passwordLabel")}
+                      {t("auth.emailLabel")}
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => alert("Please continue with Google for seamless one-click authentication.")}
-                      className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors"
-                    >
-                      {t("auth.forgotPassword")}
-                    </button>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="email"
+                        required
+                        autoFocus
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (authError) setAuthError(null);
+                        }}
+                        placeholder={t("auth.emailPlaceholder")}
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
+                      />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={t("auth.passwordPlaceholder")}
-                      className="w-full pl-11 pr-11 py-3 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--syn-muted)] hover:text-[var(--syn-heading)]"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
+                        <span>{t("auth.sendingLoginCode")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{t("auth.continueWithEmail")}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Divider */}
+                  <div className="my-6 flex items-center gap-3">
+                    <div className="flex-1 h-px bg-[var(--syn-border)]" />
+                    <span className="text-xs text-[var(--syn-subtle)] uppercase tracking-wider font-mono">
+                      {t("auth.orContinueWith")}
+                    </span>
+                    <div className="flex-1 h-px bg-[var(--syn-border)]" />
                   </div>
-                </div>
 
-                {emailSentNotice && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <span>Please use the Google sign-in button below to access your live dashboard directly.</span>
-                  </div>
-                )}
-
-                {/* Primary Sign In Button */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50"
-                >
-                  {t("auth.signInBtn")}
-                </button>
-              </form>
-
-              {/* Divider */}
-              <div className="my-6 flex items-center gap-3">
-                <div className="flex-1 h-px bg-[var(--syn-border)]" />
-                <span className="text-xs text-[var(--syn-subtle)] uppercase tracking-wider font-mono">
-                  {t("auth.orContinueWith")}
-                </span>
-                <div className="flex-1 h-px bg-[var(--syn-border)]" />
-              </div>
-
-              {/* Google OAuth Button */}
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="w-full py-3.5 px-4 rounded-2xl bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-sm font-semibold shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-                    <span>{t("auth.connectingGoogle")}</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
-                      <path
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                        fill="#4285F4"
-                      />
-                      <path
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        fill="#34A853"
-                      />
-                      <path
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        fill="#FBBC05"
-                      />
-                      <path
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        fill="#EA4335"
-                      />
-                    </svg>
-                    <span>{t("auth.continueWithGoogle")}</span>
-                  </>
-                )}
-              </button>
-
-              {/* Create Free Account Link */}
-              <div className="mt-5 text-center">
-                <span className="text-xs text-[var(--syn-muted)]">
-                  {t("auth.noAccount")}{" "}
+                  {/* Google OAuth Button */}
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-bold transition-colors cursor-pointer"
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-sm font-semibold shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                   >
-                    {t("auth.createFreeAccount")}
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                        <span>{t("auth.connectingGoogle")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                          <path
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                            fill="#4285F4"
+                          />
+                          <path
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                            fill="#34A853"
+                          />
+                          <path
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                            fill="#FBBC05"
+                          />
+                          <path
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                            fill="#EA4335"
+                          />
+                        </svg>
+                        <span>{t("auth.continueWithGoogle")}</span>
+                      </>
+                    )}
                   </button>
-                </span>
-              </div>
+                </form>
+              ) : (
+                /* STEP 2: 6-DIGIT OTP VERIFICATION */
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[var(--syn-heading)] block">
+                        {t("auth.enterLoginCode")}
+                      </label>
+                      <div className="relative">
+                        <KeyRound className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          autoFocus
+                          required
+                          value={otpCode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            setOtpCode(val);
+                            if (authError) setAuthError(null);
+                          }}
+                          placeholder={t("auth.otpPlaceholder") || "123456"}
+                          className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-lg font-mono font-bold tracking-[0.35em] placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resend Code Controls */}
+                    <div className="flex items-center justify-end text-xs text-[var(--syn-muted)] pt-1">
+                      {cooldown > 0 ? (
+                        <span className="text-[var(--syn-subtle)] font-mono">
+                          {t("auth.resendCode")} ({cooldown}s)
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={isResending}
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-bold transition-colors inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isResending ? "animate-spin" : ""}`} />
+                          {isResending ? t("auth.resendingCode") : t("auth.resendCode")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
+                        <span>{t("auth.verifyingCode")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{t("auth.verifyAndSignInBtn")}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Back to email link */}
+                  <div className="mt-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep("email");
+                        setOtpCode("");
+                        setAuthError(null);
+                        setAuthSuccess(null);
+                      }}
+                      className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-bold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      ← {t("auth.backToEmail") || "Back"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* Terms Footer */}
