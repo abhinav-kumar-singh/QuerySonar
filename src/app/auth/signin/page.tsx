@@ -4,35 +4,36 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import {
-  Radar,
-  Send,
-  Link2,
-  Mail,
-  FileText,
-  Clock,
-  Award,
-  BookOpen,
-  Cpu,
-  ShieldCheck,
-  Calendar,
-  Users,
-  Eye,
-  EyeOff,
-  Lock,
-  Loader2,
-  ArrowLeft,
   Sparkles,
-  CheckCircle2,
-  ExternalLink,
-  Edit2,
-  TrendingUp,
-  Globe2,
+  LayoutDashboard,
+  Users,
+  Globe,
+  Search,
+  Zap,
   Check,
   Plus,
+  Loader2,
+  ArrowLeft,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  TrendingUp,
+  Shield,
+  Bot,
+  Layers,
+  ArrowUpRight,
+  ExternalLink,
+  MessageSquare,
+  Newspaper,
+  BookOpen,
+  Code2,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { AIEngineRow } from "@/components/ui/ai-engine-icons";
 
 export default function SignInPage() {
   const { t } = useTranslation();
@@ -42,17 +43,25 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailSentNotice, setEmailSentNotice] = useState(false);
 
-  // Interactive Mini App State (Right Side)
+  // Interactive Mini QuerySonar App State
   const [activeTab, setActiveTab] = useState<
-    "outreach" | "summary" | "citations" | "reports" | "playbook"
-  >("outreach");
-  const [selectedOpportunity, setSelectedOpportunity] = useState<"forbes" | "techcrunch" | "wired">("forbes");
-  const [emailDraftSent, setEmailDraftSent] = useState(false);
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
-  const [draftSubject, setDraftSubject] = useState("Quick question about your list");
-  const [draftBody, setDraftBody] = useState(
-    "Hi there,\n\nI noticed your excellent article on forbes.com. As a company in the same space, I thought you might find our recent research on AI visibility interesting..."
-  );
+    "overview" | "competitors" | "sources" | "queries" | "actions"
+  >("overview");
+
+  // Interactive Query tab selection
+  const [selectedPersonaQuery, setSelectedPersonaQuery] = useState<number>(0);
+
+  // Interactive Actions checklist state
+  const [completedActions, setCompletedActions] = useState<string[]>([
+    "llmstxt",
+    "robots",
+  ]);
+
+  const toggleAction = (id: string) => {
+    setCompletedActions((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  };
 
   const handleGoogleSignIn = async () => {
     try {
@@ -68,24 +77,51 @@ export default function SignInPage() {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
-    // Simulate sign-in / redirect with Google primary
     setTimeout(() => {
       setEmailSentNotice(true);
       setLoading(false);
-    }, 600);
+    }, 500);
   };
 
-  const handleSendDraftEmail = () => {
-    setEmailDraftSent(true);
-    setTimeout(() => {
-      setEmailDraftSent(false);
-    }, 3500);
-  };
+  const personaQueries = [
+    {
+      persona: "Discovery",
+      query: "What is the best AI search optimization platform for marketing teams?",
+      winner: "QuerySonar",
+      sov: 94,
+      engines: "6/6 Cited",
+      engineNote: "ChatGPT and Perplexity cite QuerySonar as the leading GEO platform.",
+    },
+    {
+      persona: "Comparison",
+      query: "QuerySonar vs traditional SEO tools for ChatGPT and Perplexity",
+      winner: "QuerySonar",
+      sov: 88,
+      engines: "6/6 Cited",
+      engineNote: "Consensus highlights deterministic multi-engine probing and citation tracing.",
+    },
+    {
+      persona: "Feature",
+      query: "How to trace live Reddit and Google News citations in LLM responses",
+      winner: "QuerySonar",
+      sov: 91,
+      engines: "5/6 Cited",
+      engineNote: "Google Gemini and Claude cite QuerySonar's 8-channel grounding radar.",
+    },
+    {
+      persona: "Enterprise",
+      query: "Enterprise generative search monitoring with multi-workspace support",
+      winner: "QuerySonar",
+      sov: 86,
+      engines: "6/6 Cited",
+      engineNote: "DeepSeek and Grok confirm real-time drift alerts & automated weekly digests.",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--syn-bg,#0B0F17)] text-[var(--syn-text,#F8FAFC)] flex flex-col justify-between p-4 sm:p-6 lg:p-8">
       {/* Top Header Bar */}
-      <div className="max-w-[1240px] w-full mx-auto flex items-center justify-between py-2">
+      <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between py-2">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--syn-muted,#94A3B8)] hover:text-[var(--syn-heading,#FFFFFF)] transition-colors group"
@@ -110,8 +146,8 @@ export default function SignInPage() {
       </div>
 
       {/* Main Dual-Column Split Screen Container */}
-      <div className="max-w-[1240px] w-full mx-auto my-6">
-        <div className="rounded-3xl bg-[var(--syn-card,#111827)] border border-[var(--syn-border,rgba(255,255,255,0.08))] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
+      <div className="max-w-[1280px] w-full mx-auto my-6">
+        <div className="rounded-3xl bg-[var(--syn-card,#111827)] border border-[var(--syn-border,rgba(255,255,255,0.08))] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[660px]">
           
           {/* ═══════════════════════════════════════════════════════════════
               LEFT COLUMN: AUTHENTICATION / LOGIN FORM
@@ -120,6 +156,10 @@ export default function SignInPage() {
             <div>
               {/* Form Title */}
               <div className="mb-8">
+                <span className="v2-badge-pill mb-3 text-[10px] font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-400 !border-emerald-500/20">
+                  <Sparkles className="w-3 h-3" />
+                  {t("auth.badgeIntelligence")}
+                </span>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--syn-heading,#FFFFFF)] mb-2.5">
                   {t("auth.readyToDominate")}
                 </h1>
@@ -142,7 +182,7 @@ export default function SignInPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("auth.emailPlaceholder")}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                   </div>
                 </div>
@@ -154,8 +194,8 @@ export default function SignInPage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => alert("Please continue with Google for instant zero-password authentication.")}
-                      className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                      onClick={() => alert("Please continue with Google for seamless one-click authentication.")}
+                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
                     >
                       {t("auth.forgotPassword")}
                     </button>
@@ -167,7 +207,7 @@ export default function SignInPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t("auth.passwordPlaceholder")}
-                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                     <button
                       type="button"
@@ -180,8 +220,8 @@ export default function SignInPage() {
                 </div>
 
                 {emailSentNotice && (
-                  <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-indigo-400" />
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                     <span>Please use the Google sign-in button below to access your live dashboard directly.</span>
                   </div>
                 )}
@@ -190,7 +230,7 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 rounded-xl font-bold text-xs text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {t("auth.signInBtn")}
                 </button>
@@ -249,7 +289,7 @@ export default function SignInPage() {
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors cursor-pointer"
+                    className="text-emerald-400 hover:text-emerald-300 font-bold transition-colors cursor-pointer"
                   >
                     {t("auth.createFreeAccount")}
                   </button>
@@ -266,315 +306,120 @@ export default function SignInPage() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
-              RIGHT COLUMN: INTERACTIVE LIVE MINI-APP PREVIEW (RankPrompt Style)
+              RIGHT COLUMN: AUTHENTIC QUERYSONAR INTERACTIVE APP PREVIEW
               ═══════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-7 bg-[var(--syn-bg,#0B0F17)]/95 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden">
             
-            {/* Top Interactive App Header */}
+            {/* Top Interactive App Header with Synetica Navigation Pills */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--syn-muted,#94A3B8)]">
-                    Interactive Live Sandbox
+                    QuerySonar Live App Preview
                   </span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                  Click tabs to explore
-                </span>
-              </div>
-
-              {/* Mini App Body Grid */}
-              <div className="grid grid-cols-12 gap-3.5 pt-1">
                 
-                {/* 1. Mini Sidebar Navigation */}
-                <div className="col-span-12 sm:col-span-4 flex flex-col gap-1.5 p-2 rounded-2xl bg-black/40 border border-white/5">
-                  {/* Brand Profile Pill */}
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5 mb-1">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-bold text-xs flex items-center justify-center shrink-0">
-                      M
-                    </div>
-                    <span className="text-xs font-bold text-[var(--syn-heading,#FFFFFF)] truncate">
-                      {t("auth.myBrand")}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("outreach")}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold transition-all mb-2 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t("auth.newReport")}</span>
-                  </button>
-
-                  {/* Navigation Item Tabs */}
+                {/* 5 Real QuerySonar Navigation Tabs (Overview, Competitors, Sources, Queries, Actions) */}
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-full border border-white/10">
                   {[
-                    { id: "summary", label: t("auth.tabSummary"), icon: TrendingUp },
-                    { id: "citations", label: t("auth.tabCitations"), icon: Link2 },
-                    { id: "outreach", label: t("auth.tabOutreach"), icon: Send, active: true },
-                    { id: "emailhub", label: t("auth.tabEmailHub"), icon: Mail },
-                    { id: "reports", label: t("auth.tabReports"), icon: FileText },
-                    { id: "scheduled", label: t("auth.tabScheduled"), icon: Clock },
-                    { id: "whitelabel", label: t("auth.tabWhiteLabel"), icon: Award },
-                    { id: "articles", label: t("auth.tabArticles"), icon: BookOpen },
-                    { id: "integrations", label: t("auth.tabIntegrations"), icon: Cpu },
-                    { id: "seoaudits", label: t("auth.tabSeoAudits"), icon: ShieldCheck },
-                    { id: "calendar", label: t("auth.tabCalendar"), icon: Calendar },
-                    { id: "collaborators", label: t("auth.tabCollaborators"), icon: Users },
+                    { id: "overview", label: t("nav.dashboard") || "Overview", icon: LayoutDashboard },
+                    { id: "competitors", label: t("nav.competitors") || "Competitors", icon: Users },
+                    { id: "sources", label: t("nav.sources") || "Sources", icon: Globe },
+                    { id: "queries", label: t("nav.queries") || "Queries", icon: Search },
+                    { id: "actions", label: t("nav.actions") || "Actions", icon: Zap },
                   ].map((tab) => {
                     const Icon = tab.icon;
-                    const isCurrent = activeTab === tab.id || (tab.id === "outreach" && activeTab === "outreach");
+                    const isCurrent = activeTab === tab.id;
                     return (
                       <button
                         key={tab.id}
                         type="button"
-                        onClick={() => {
-                          if (["outreach", "summary", "citations", "reports"].includes(tab.id)) {
-                            setActiveTab(tab.id as any);
-                          } else {
-                            setActiveTab("outreach");
-                          }
-                        }}
-                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left text-[11px] font-medium transition-all cursor-pointer ${
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                           isCurrent
-                            ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold shadow-xs"
-                            : "text-[var(--syn-muted,#94A3B8)] hover:bg-white/5 hover:text-white"
+                            ? "bg-[#86EFAC] text-neutral-950 font-bold shadow-xs"
+                            : "text-[var(--syn-muted,#94A3B8)] hover:text-white"
                         }`}
                       >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{tab.label}</span>
+                        <Icon className="w-3 h-3" />
+                        <span className="hidden sm:inline">{tab.label}</span>
                       </button>
                     );
                   })}
                 </div>
+              </div>
 
-                {/* 2. Mini Content Pane (Dynamic) */}
-                <div className="col-span-12 sm:col-span-8 flex flex-col gap-3.5">
-                  
-                  {/* Dynamic Tab 1: Outreach (Matching Image 2 Reference) */}
-                  {activeTab === "outreach" && (
-                    <>
-                      {/* Sub-Header & 3 KPI Stat Boxes */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                          <Send className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>{t("auth.backlinkOutreach")}</span>
-                        </div>
+              {/* Mini App Content Area based on Selected Tab */}
+              <div className="pt-2">
 
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                            <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-indigo-400" /> {t("auth.opportunities")}
-                            </span>
-                            <span className="text-base font-extrabold text-white mt-1">47</span>
-                          </div>
-
-                          <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                            <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] flex items-center gap-1">
-                              <Send className="w-3 h-3 text-emerald-400" /> {t("auth.emailsSent")}
-                            </span>
-                            <span className="text-base font-extrabold text-white mt-1">23</span>
-                          </div>
-
-                          <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                            <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] flex items-center gap-1">
-                              <Eye className="w-3 h-3 text-cyan-400" /> {t("auth.openRate")}
-                            </span>
-                            <span className="text-base font-extrabold text-white mt-1">68%</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Outreach Opportunities List */}
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="font-bold text-[var(--syn-heading,#FFFFFF)]">
-                            {t("auth.outreachOpportunities")}
-                          </span>
-                          <span className="text-[var(--syn-muted,#94A3B8)]">{t("auth.fromCitations")}</span>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          {/* Item 1: techcrunch */}
-                          <div
-                            onClick={() => {
-                              setSelectedOpportunity("techcrunch");
-                              setDraftSubject("Inquiry regarding AI tool citation on TechCrunch");
-                              setDraftBody("Hi TechCrunch team,\n\nLoved your recent piece highlighting LLM search. QuerySonar provides deterministic citations data that might benefit your next roundup.");
-                            }}
-                            className={`p-2 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                              selectedOpportunity === "techcrunch"
-                                ? "bg-indigo-950/40 border-indigo-500/50"
-                                : "bg-white/5 border-white/5 hover:border-white/15"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-                              <div>
-                                <span className="font-bold text-white block text-[11px]">techcrunch.com</span>
-                                <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{t("auth.articleMention")}</span>
-                              </div>
-                            </div>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              {t("auth.statusSent")}
-                            </span>
-                          </div>
-
-                          {/* Item 2: forbes */}
-                          <div
-                            onClick={() => {
-                              setSelectedOpportunity("forbes");
-                              setDraftSubject("Quick question about your list");
-                              setDraftBody("Hi there,\n\nI noticed your excellent article on forbes.com. As a company in the same space, I thought you might find our recent research on AI visibility interesting...");
-                            }}
-                            className={`p-2 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                              selectedOpportunity === "forbes"
-                                ? "bg-indigo-950/40 border-indigo-500/50 ring-1 ring-indigo-500/30"
-                                : "bg-white/5 border-white/5 hover:border-white/15"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-                              <div>
-                                <span className="font-bold text-white block text-[11px]">forbes.com</span>
-                                <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{t("auth.listicle")}</span>
-                              </div>
-                            </div>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                              {t("auth.statusDraft")}
-                            </span>
-                          </div>
-
-                          {/* Item 3: wired */}
-                          <div
-                            onClick={() => {
-                              setSelectedOpportunity("wired");
-                              setDraftSubject("Feedback & data for Wired AI Search guide");
-                              setDraftBody("Hi Wired editorial,\n\nFollowing your deep-dive on generative search agents, QuerySonar tracks over 12k prompts weekly and can supply telemetry charts for future editions.");
-                            }}
-                            className={`p-2 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                              selectedOpportunity === "wired"
-                                ? "bg-indigo-950/40 border-indigo-500/50"
-                                : "bg-white/5 border-white/5 hover:border-white/15"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                              <div>
-                                <span className="font-bold text-white block text-[11px]">wired.com</span>
-                                <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{t("auth.newsPiece")}</span>
-                              </div>
-                            </div>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                              {t("auth.statusReady")}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* AI-Generated Email Card */}
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                            <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>{t("auth.aiGeneratedEmail")}</span>
-                          </div>
-                          <span className="text-[9px] font-mono font-bold text-emerald-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {t("auth.readyToSend")}
-                          </span>
-                        </div>
-
-                        <div className="text-[10px] text-[var(--syn-muted,#94A3B8)] space-y-0.5 border-b border-white/5 pb-1.5">
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold text-white">To:</span>
-                            <span className="font-mono text-indigo-300">
-                              tech@{selectedOpportunity}.com
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold text-white">Subject:</span>
-                            <span>{draftSubject}</span>
-                          </div>
-                        </div>
-
-                        {/* Editable or Static Message */}
-                        {isEditingDraft ? (
-                          <textarea
-                            value={draftBody}
-                            onChange={(e) => setDraftBody(e.target.value)}
-                            rows={3}
-                            className="w-full p-2 rounded-lg bg-black/60 border border-indigo-500/40 text-[11px] text-white focus:outline-none"
-                          />
-                        ) : (
-                          <p className="text-[11px] text-neutral-300 leading-relaxed font-sans bg-white/5 p-2 rounded-lg line-clamp-3">
-                            {draftBody}
-                          </p>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={handleSendDraftEmail}
-                            className="flex-1 py-1.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>{emailDraftSent ? "✓ Email Sent!" : t("auth.sendEmailBtn")}</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingDraft(!isEditingDraft)}
-                            className="py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            <span>{isEditingDraft ? "Done" : t("auth.editBtn")}</span>
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Dynamic Tab 2: Summary / Overview */}
-                  {activeTab === "summary" && (
-                    <div className="space-y-3 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between text-xs font-bold text-white">
-                        <span className="flex items-center gap-1.5">
-                          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>AI Share of Voice Benchmark</span>
+                {/* ── 1. OVERVIEW TAB PREVIEW ──────────────────────────────── */}
+                {activeTab === "overview" && (
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                    {/* 4 Bento KPI Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
+                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                          Share of Voice
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-400">Consensus #1</span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] block">Overall SOV</span>
-                          <span className="text-lg font-extrabold text-emerald-400 font-mono">82%</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] block">Citations</span>
-                          <span className="text-lg font-extrabold text-indigo-400 font-mono">142</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
-                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] block">Engines</span>
-                          <span className="text-lg font-extrabold text-cyan-400 font-mono">6/6</span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-xl font-extrabold text-emerald-400 font-mono">82%</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">+12%</span>
                         </div>
                       </div>
 
-                      {/* Engine Score Bars */}
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-2">
+                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
+                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                          Consensus Rank
+                        </span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-xl font-extrabold text-white font-mono">#1</span>
+                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono">/ 6 Models</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
+                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                          Live Citations
+                        </span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-xl font-extrabold text-indigo-400 font-mono">142</span>
+                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono">8 Channels</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
+                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                          AI Engines
+                        </span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-xl font-extrabold text-cyan-400 font-mono">6/6</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">Live</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Multi-Engine Score Breakdown Box */}
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs pb-1 border-b border-white/5">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Multi-Engine Score Breakdown</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400 font-semibold">91% Consensus Average</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                         {[
-                          { name: "ChatGPT Search (GPT-4o)", score: 92, color: "bg-emerald-400" },
-                          { name: "Google Gemini (2.0 Flash)", score: 88, color: "bg-blue-400" },
-                          { name: "Perplexity Sonar Pro", score: 94, color: "bg-purple-400" },
-                          { name: "Claude 3.7 Sonnet", score: 85, color: "bg-amber-400" },
+                          { name: "ChatGPT Search (GPT-4o)", score: 92, badge: "Cited #1", color: "bg-emerald-400" },
+                          { name: "Google Gemini (2.0 Flash)", score: 88, badge: "Cited #1", color: "bg-blue-400" },
+                          { name: "Perplexity Sonar Pro", score: 94, badge: "Grounding Top 1", color: "bg-purple-400" },
+                          { name: "Claude 3.7 Sonnet", score: 85, badge: "Key Recommendation", color: "bg-amber-400" },
                         ].map((eng, i) => (
-                          <div key={i} className="space-y-1">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-white font-medium">{eng.name}</span>
-                              <span className="font-mono text-neutral-300">{eng.score}%</span>
+                          <div key={i} className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-white font-medium truncate">{eng.name}</span>
+                              <span className="font-mono text-emerald-400 font-bold">{eng.score}%</span>
                             </div>
                             <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
                               <div className={`h-full rounded-full ${eng.color}`} style={{ width: `${eng.score}%` }} />
@@ -583,49 +428,220 @@ export default function SignInPage() {
                         ))}
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Dynamic Tab 3: Citations */}
-                  {activeTab === "citations" && (
-                    <div className="space-y-3 animate-in fade-in duration-200">
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Link2 className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Multi-Channel Grounding Radar</span>
+                {/* ── 2. COMPETITORS TAB PREVIEW ───────────────────────────── */}
+                {activeTab === "competitors" && (
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Head-to-Head Competitive Displacement</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-indigo-300">4 Brands Monitored</span>
                       </div>
 
                       <div className="space-y-2">
                         {[
-                          { source: "reddit.com/r/developer", citations: 48, status: "High Impact" },
-                          { source: "techcrunch.com/reviews", citations: 32, status: "Authoritative" },
-                          { source: "wikipedia.org/wiki/GEO", citations: 24, status: "Knowledge Graph" },
-                          { source: "github.com/topics", citations: 38, status: "Developer Core" },
-                        ].map((src, idx) => (
-                          <div key={idx} className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between text-xs">
-                            <div>
-                              <span className="font-bold text-white block text-[11px]">{src.source}</span>
-                              <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{src.citations} live citations verified</span>
+                          { name: "Your Brand (QuerySonar)", score: 82, wins: "18/20 Queries", status: "Market Leader", isBrand: true },
+                          { name: "Legacy Competitor Alpha", score: 64, wins: "11/20 Queries", status: "Displaced in Perplexity", isBrand: false },
+                          { name: "Alternative Tool Beta", score: 52, wins: "7/20 Queries", status: "Citation Gap Detected", isBrand: false },
+                        ].map((comp, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                              comp.isBrand
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-white"
+                                : "bg-white/5 border-white/5 text-neutral-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                comp.isBrand ? "bg-[#86EFAC] text-neutral-950" : "bg-white/10 text-neutral-300"
+                              }`}>
+                                {comp.name[0]}
+                              </div>
+                              <div>
+                                <span className="font-bold block text-[11px] text-white">{comp.name}</span>
+                                <span className="text-[10px] text-[var(--syn-muted,#94A3B8)]">{comp.status}</span>
+                              </div>
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-                              {src.status}
-                            </span>
+
+                            <div className="text-right">
+                              <span className={`font-mono font-bold block ${comp.isBrand ? "text-emerald-400" : "text-white"}`}>
+                                {comp.score}% SOV
+                              </span>
+                              <span className="text-[9px] text-[var(--syn-muted,#94A3B8)] font-mono">{comp.wins}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                </div>
+                {/* ── 3. SOURCES TAB PREVIEW ───────────────────────────────── */}
+                {activeTab === "sources" && (
+                  <div className="space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-white">
+                      <span className="flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>8-Channel Multi-Grounding Radar</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-cyan-300">142 Citations Verified</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        { title: "Reddit & HackerNews", desc: "48 discussions cited across r/developer & r/marketing", icon: MessageSquare, badge: "Live Harvester", color: "text-orange-400" },
+                        { title: "Google News & Digital PR", desc: "32 editorial articles cited in latest LLM updates", icon: Newspaper, badge: "Real-Time PR", color: "text-blue-400" },
+                        { title: "Wikipedia & Knowledge Graph", desc: "Entity recognition & verified factual anchoring", icon: BookOpen, badge: "High Authority", color: "text-purple-400" },
+                        { title: "Technical GEO & llms.txt", desc: "robots.txt allows GPTBot, ClaudeBot, PerplexityBot", icon: Code2, badge: "200 OK Validated", color: "text-emerald-400" },
+                      ].map((src, i) => {
+                        const Icon = src.icon;
+                        return (
+                          <div key={i} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Icon className={`w-3.5 h-3.5 ${src.color}`} />
+                                <span className="text-white font-bold text-[11px]">{src.title}</span>
+                              </div>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-neutral-300">
+                                {src.badge}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[var(--syn-muted,#94A3B8)] leading-relaxed">
+                              {src.desc}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 4. QUERIES TAB PREVIEW ───────────────────────────────── */}
+                {activeTab === "queries" && (
+                  <div className="space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-white">
+                      <span className="flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>4-Persona AI Buyer Queries</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-[var(--syn-muted,#94A3B8)]">Click query to probe</span>
+                    </div>
+
+                    {/* Query Pills Selection */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {personaQueries.map((pq, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedPersonaQuery(idx)}
+                          className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                            selectedPersonaQuery === idx
+                              ? "bg-emerald-500/15 border-emerald-500/40 text-white shadow-xs"
+                              : "bg-black/40 border-white/5 text-[var(--syn-muted,#94A3B8)] hover:text-white"
+                          }`}
+                        >
+                          <span className="text-[9px] font-mono uppercase font-bold text-emerald-400 block mb-0.5">
+                            {pq.persona} Intent
+                          </span>
+                          <span className="text-[11px] font-medium leading-snug line-clamp-1 block text-white">
+                            &ldquo;{pq.query}&rdquo;
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active Probe Result Preview */}
+                    <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] border-b border-white/5 pb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">Target Brand:</span>
+                          <span className="text-emerald-400 font-bold">{personaQueries[selectedPersonaQuery].winner}</span>
+                        </div>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {personaQueries[selectedPersonaQuery].sov}% SOV ({personaQueries[selectedPersonaQuery].engines})
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-300 leading-relaxed bg-white/5 p-2 rounded-lg font-sans">
+                        {personaQueries[selectedPersonaQuery].engineNote}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 5. ACTIONS TAB PREVIEW ───────────────────────────────── */}
+                {activeTab === "actions" && (
+                  <div className="space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-white">
+                      <span className="flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Tactical GEO Remediation Plan</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400">
+                        {completedActions.length}/4 Completed
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        { id: "llmstxt", title: "Deploy standard /llms.txt at root domain", impact: "High Impact", effort: "5 mins", cat: "Technical GEO" },
+                        { id: "robots", title: "Verify GPTBot & ClaudeBot in robots.txt", impact: "High Impact", effort: "2 mins", cat: "AI Crawlers" },
+                        { id: "gemini", title: "Publish Comparison Battlecard for Gemini Answers", impact: "High Impact", effort: "15 mins", cat: "Displacement" },
+                        { id: "reddit", title: "Seed authoritative verified FAQ on Reddit", impact: "Medium Impact", effort: "10 mins", cat: "Community" },
+                      ].map((act) => {
+                        const isDone = completedActions.includes(act.id);
+                        return (
+                          <div
+                            key={act.id}
+                            onClick={() => toggleAction(act.id)}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                              isDone
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-white"
+                                : "bg-black/40 border-white/5 text-[var(--syn-muted,#94A3B8)] hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
+                                isDone
+                                  ? "bg-[#86EFAC] text-neutral-950 border-[#86EFAC] font-bold shadow-xs"
+                                  : "border-white/20 bg-black/30"
+                              }`}>
+                                {isDone && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                              </div>
+                              <div>
+                                <span className={`font-semibold block text-[11px] ${isDone ? "text-white line-through opacity-80" : "text-white"}`}>
+                                  {act.title}
+                                </span>
+                                <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{act.cat} · {act.effort}</span>
+                              </div>
+                            </div>
+
+                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white/5 border border-white/10 text-neutral-300 shrink-0">
+                              {act.impact}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
 
-            {/* Bottom Glow / Probing Banner */}
-            <div className="mt-4 p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-indigo-300">
-                <Globe2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span className="text-[11px]">Concurrent Probing on 6 Frontier LLMs Active</span>
+            {/* Bottom Glow / Multi-Engine Live Probing Bar */}
+            <div className="mt-4 p-3 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between text-xs flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono text-[var(--syn-muted,#94A3B8)]">Active Engines:</span>
+                <AIEngineRow className="flex items-center gap-2" />
               </div>
               <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                99.9% Uptime
+                Live Probes Active
               </span>
             </div>
 
@@ -634,7 +650,7 @@ export default function SignInPage() {
       </div>
 
       {/* Bottom Legal Footer */}
-      <div className="max-w-[1240px] w-full mx-auto text-center text-xs text-[var(--syn-muted,#64748B)] py-2">
+      <div className="max-w-[1280px] w-full mx-auto text-center text-xs text-[var(--syn-muted,#64748B)] py-2">
         {t("footer.rights")}
       </div>
     </div>
