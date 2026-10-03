@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* Live is QuerySonar's intentional default — an intelligence workspace, not a dark-mode override. */
+:root,
+[data-theme="live"],
+[data-theme="dark"] {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --card: #121215;
+  --card-foreground: #f4f4f5;
+  --surface: #18181b;
+  --surface-strong: #27272a;
+  --primary: #ff7947;
+  --primary-foreground: #15171b;
+  --secondary: #18181b;
+  --secondary-foreground: #f4f4f5;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #f4f4f5;
+  --destructive: #f18d89;
+  --destructive-foreground: #301514;
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #ff7947;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --chart-1: #ff7947;
+  --chart-2: #a1a1aa;
+  --chart-3: #22c55e;
+  --chart-grid: #27272a;
+  --radius: 0.5rem;
+}
+
+[data-theme="light"] {
+  --background: #f3f4f6;
+  --foreground: #20232b;
+  --card: #ffffff;
+  --card-foreground: #20232b;
+  --surface: #eaecef;
+  --surface-strong: #e1e5eb;
+  --primary: #c44310;
+  --primary-foreground: #ffffff;
+  --secondary: #e8ebef;
+  --secondary-foreground: #20232b;
+  --muted: #eaecef;
+  --muted-foreground: #667080;
+  --accent: #e1e5ed;
+  --accent-foreground: #20232b;
+  --destructive: #aa3737;
+  --destructive-foreground: #ffffff;
+  --border: #dfe2e8;
+  --input: #bfc6d1;
+  --ring: #df511b;
+  --success: #526a3d;
+  --warning: #90621f;
+  --chart-1: #c44310;
+  --chart-2: #7c8699;
+  --chart-3: #557d75;
+  --chart-grid: #dfe2e8;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    --background: #f3f4f6;
+    --foreground: #20232b;
+    --card: #ffffff;
+    --card-foreground: #20232b;
+    --surface: #eaecef;
+    --surface-strong: #e1e5eb;
+    --primary: #c44310;
+    --primary-foreground: #ffffff;
+    --secondary: #e8ebef;
+    --secondary-foreground: #20232b;
+    --muted: #eaecef;
+    --muted-foreground: #667080;
+    --accent: #e1e5ed;
+    --accent-foreground: #20232b;
+    --destructive: #aa3737;
+    --destructive-foreground: #ffffff;
+    --border: #dfe2e8;
+    --input: #bfc6d1;
+    --ring: #df511b;
+    --success: #526a3d;
+    --warning: #90621f;
+    --chart-1: #c44310;
+    --chart-2: #7c8699;
+    --chart-3: #557d75;
+    --chart-grid: #dfe2e8;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+
+* {
+  border-color: var(--border);
+}
+html {
+  scroll-behavior: smooth;
+  background: var(--background);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+html:has(.synetica-shell),
+body:has(.synetica-shell) {
+  background-color: var(--syn-bg, var(--background));
+  color: var(--syn-text, var(--foreground));
+}
+::selection {
+  background: color-mix(in srgb, var(--primary) 32%, transparent);
+  color: var(--foreground);
+}
+.radar-grid {
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--primary) 7%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--primary) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 36px 36px;
+}
+.radar-orb {
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--primary) 24%, transparent) 0 2px,
+    transparent 3px 29%,
+    color-mix(in srgb, var(--primary) 20%, transparent) 30% 31%,
+    transparent 32% 52%,
+    color-mix(in srgb, var(--primary) 15%, transparent) 53% 54%,
+    transparent 55%
+  );
+}
+.signal-dot {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent),
+    0 0 18px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+.surface-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent),
+    0 24px 70px -36px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+.text-balance {
+  text-wrap: balance;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

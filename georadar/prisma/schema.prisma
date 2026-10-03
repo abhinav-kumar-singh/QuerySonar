@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth Models (NextAuth) ───
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  plan          Plan      @default(FREE)
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+  accounts      Account[]
+  sessions      Session[]
+  brands        Brand[]
+  memberships   WorkspaceMember[]
+  notifications Notification[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── App Models ───
+
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  PRO
+  ENTERPRISE
+  AGENCY
+}
+
+enum Engine {
+  PERPLEXITY
+  GEMINI
+  OPENAI
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ImpactRating {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ActionType {
+  RESPOND_REDDIT
+  CLAIM_REVIEW_SITE
+  UPDATE_SCHEMA
+  CONTACT_PUBLICATION
+  CREATE_CONTENT
+  GET_REVIEWS
+}
+
+enum AuditStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  websiteUrl  String
+  competitors String[]
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queries     TrackedQuery[]
+  auditRuns   AuditRun[]
+  members     WorkspaceMember[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrackedQuery {
+  id        String  @id @default(cuid())
+  brandId   String
+  queryText String
+  isActive  Boolean @default(true)
+  brand     Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  engineResponses EngineResponse[]
+}
+
+model AuditRun {
+  id              String      @id @default(cuid())
+  brandId         String
+  status          AuditStatus @default(PENDING)
+  overallScore    Float?
+  perplexityScore Float?
+  geminiScore     Float?
+  openaiScore     Float?
+  brand           Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  engineResponses EngineResponse[]
+  actions         RemediationAction[]
+  runDate         DateTime    @default(now())
+}
+
+model EngineResponse {
+  id                 String   @id @default(cuid())
+  auditRunId         String
+  trackedQueryId     String
+  engine             Engine
+  rawResponse        String   @db.Text
+  brandMentioned     Boolean  @default(false)
+  mentionPosition    Int?
+  sentiment          Sentiment @default(NEUTRAL)
+  competitorsMentioned String[]
+  auditRun           AuditRun     @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  trackedQuery       TrackedQuery @relation(fields: [trackedQueryId], references: [id], onDelete: Cascade)
+  citedSources       CitedSource[]
+}
+
+model CitedSource {
+  id               String       @id @default(cuid())
+  engineResponseId String
+  url              String
+  domain           String
+  title            String?
+  relevanceScore   Float?
+  impactRating     ImpactRating @default(LOW)
+  excerptText      String?      @db.Text
+  engineResponse   EngineResponse @relation(fields: [engineResponseId], references: [id], onDelete: Cascade)
+}
+
+model RemediationAction {
+  id          String      @id @default(cuid())
+  auditRunId  String
+  priority    ImpactRating
+  actionType  ActionType
+  title       String
+  description String      @db.Text
+  targetUrl   String?
+  isCompleted Boolean     @default(false)
+  auditRun    AuditRun    @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  brandId   String?
+  type      String   // "visibility" | "source" | "action" | "query" | "system"
+  title     String
+  message   String   @db.Text
+  link      String   @default("/dashboard")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INVITED
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  brandId     String
+  userId      String?
+  email       String
+  name        String?
+  role        WorkspaceRole @default(EDITOR)
+  status      MemberStatus  @default(INVITED)
+  inviteToken String?       @unique
+  invitedAt   DateTime      @default(now())
+  joinedAt    DateTime?
+  brand       Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([brandId, email])
+  @@index([brandId])
+  @@index([email])
+  @@index([userId])
+}
+

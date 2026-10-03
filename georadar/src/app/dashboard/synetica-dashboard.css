@@ -1,0 +1,610 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   QuerySonar Synetica Dashboard Theme
+   Supports dynamic Theme switching: Dark (Live), Light, and System
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Default / Dark Theme (Live) ─────────────────────────────────────── */
+:root,
+html[data-theme="live"],
+html[data-theme="dark"] {
+  --syn-bg: #08080A;
+  --syn-card: #121215;
+  --syn-card-subtle: #18181D;
+  --syn-card-inner: #0E0E11;
+  --syn-border: rgba(255, 255, 255, 0.08);
+  --syn-text: #D4D4D8;
+  --syn-heading: #FFFFFF;
+  --syn-muted: #A1A1AA;
+  --syn-subtle: #71717A;
+  --syn-mint: #22C55E;
+  --syn-mint-glow: rgba(34, 197, 94, 0.25);
+  --syn-lime-gradient: linear-gradient(135deg, #86EFAC 0%, #4ADE80 50%, #22C55E 100%);
+  --syn-dark: #08080A;
+  --syn-header-bg: rgba(14, 14, 17, 0.92);
+  --syn-header-border: rgba(255, 255, 255, 0.08);
+  --syn-pill-bg: rgba(255, 255, 255, 0.04);
+  --syn-pill-hover: rgba(255, 255, 255, 0.08);
+  --syn-pill-text: #A1A1AA;
+  --syn-pill-active-bg: rgba(0, 0, 0, 0.55);
+  --syn-pill-active-text: #FFFFFF;
+  --syn-input-bg: #121215;
+  --syn-input-border: rgba(255, 255, 255, 0.1);
+  --syn-input-text: #FFFFFF;
+  --syn-btn-pri-bg: #22C55E;
+  --syn-btn-pri-text: #052E16;
+  --syn-btn-sec-bg: #18181D;
+  --syn-btn-sec-border: rgba(255, 255, 255, 0.1);
+  --syn-btn-sec-text: #F4F4F5;
+  --syn-chat-bubble-user: #222228;
+  --syn-chat-bubble-copilot: #121215;
+  --syn-chat-copilot-border: rgba(255, 255, 255, 0.08);
+  --syn-filter-pill-bg: #18181D;
+  --syn-filter-pill-border: rgba(255, 255, 255, 0.08);
+  --syn-filter-pill-text: #F4F4F5;
+  --syn-badge-neutral-bg: #18181D;
+  --syn-badge-neutral-text: #A1A1AA;
+  --syn-badge-neutral-border: rgba(255, 255, 255, 0.08);
+  --syn-badge-emerald-bg: rgba(34, 197, 94, 0.15);
+  --syn-badge-emerald-text: #4ADE80;
+  --syn-badge-emerald-border: rgba(34, 197, 94, 0.3);
+  --syn-badge-amber-bg: rgba(245, 158, 11, 0.15);
+  --syn-badge-amber-text: #FBBF24;
+  --syn-badge-amber-border: rgba(245, 158, 11, 0.3);
+  --syn-badge-red-bg: rgba(239, 68, 68, 0.15);
+  --syn-badge-red-text: #F87171;
+  --syn-badge-red-border: rgba(239, 68, 68, 0.3);
+}
+
+/* ── Light Theme ─────────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --syn-bg: #F4F5F8;
+  --syn-card: #FFFFFF;
+  --syn-card-subtle: #F9FAFB;
+  --syn-card-inner: #F3F4F6;
+  --syn-border: rgba(0, 0, 0, 0.07);
+  --syn-text: #111827;
+  --syn-heading: #111827;
+  --syn-muted: #6B7280;
+  --syn-subtle: #9CA3AF;
+  --syn-mint: #22C55E;
+  --syn-mint-glow: rgba(34, 197, 94, 0.25);
+  --syn-lime-gradient: linear-gradient(135deg, #86EFAC 0%, #4ADE80 50%, #22C55E 100%);
+  --syn-dark: #0F172A;
+  --syn-header-bg: rgba(255, 255, 255, 0.95);
+  --syn-header-border: rgba(0, 0, 0, 0.06);
+  --syn-pill-bg: rgba(0, 0, 0, 0.03);
+  --syn-pill-hover: rgba(0, 0, 0, 0.06);
+  --syn-pill-text: #4B5563;
+  --syn-pill-active-bg: rgba(17, 24, 39, 0.82);
+  --syn-pill-active-text: #FFFFFF;
+  --syn-input-bg: #FFFFFF;
+  --syn-input-border: #E5E7EB;
+  --syn-input-text: #111827;
+  --syn-btn-pri-bg: #111827;
+  --syn-btn-pri-text: #FFFFFF;
+  --syn-btn-sec-bg: #FFFFFF;
+  --syn-btn-sec-border: #E5E7EB;
+  --syn-btn-sec-text: #374151;
+  --syn-chat-bubble-user: #F3F4F6;
+  --syn-chat-bubble-copilot: #FFFFFF;
+  --syn-chat-copilot-border: #E5E7EB;
+  --syn-filter-pill-bg: #FFFFFF;
+  --syn-filter-pill-border: #E5E7EB;
+  --syn-filter-pill-text: #374151;
+  --syn-badge-neutral-bg: #F3F4F6;
+  --syn-badge-neutral-text: #4B5563;
+  --syn-badge-neutral-border: #E5E7EB;
+  --syn-badge-emerald-bg: #DCFCE7;
+  --syn-badge-emerald-text: #15803D;
+  --syn-badge-emerald-border: #BBF7D0;
+  --syn-badge-amber-bg: #FEF3C7;
+  --syn-badge-amber-text: #B45309;
+  --syn-badge-amber-border: #FDE68A;
+  --syn-badge-red-bg: #FEE2E2;
+  --syn-badge-red-text: #B91C1C;
+  --syn-badge-red-border: #FECACA;
+}
+
+/* ── System Theme Overrides ──────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  html[data-theme="system"] {
+    --syn-bg: #F4F5F8;
+    --syn-card: #FFFFFF;
+    --syn-card-subtle: #F9FAFB;
+    --syn-card-inner: #F3F4F6;
+    --syn-border: rgba(0, 0, 0, 0.07);
+    --syn-text: #111827;
+    --syn-heading: #111827;
+    --syn-muted: #6B7280;
+    --syn-subtle: #9CA3AF;
+    --syn-mint: #22C55E;
+    --syn-mint-glow: rgba(34, 197, 94, 0.25);
+    --syn-lime-gradient: linear-gradient(135deg, #86EFAC 0%, #4ADE80 50%, #22C55E 100%);
+    --syn-dark: #0F172A;
+    --syn-header-bg: rgba(255, 255, 255, 0.95);
+    --syn-header-border: rgba(0, 0, 0, 0.06);
+    --syn-pill-bg: rgba(0, 0, 0, 0.03);
+    --syn-pill-hover: rgba(0, 0, 0, 0.06);
+    --syn-pill-text: #4B5563;
+    --syn-pill-active-bg: rgba(17, 24, 39, 0.82);
+    --syn-pill-active-text: #FFFFFF;
+    --syn-input-bg: #FFFFFF;
+    --syn-input-border: #E5E7EB;
+    --syn-input-text: #111827;
+    --syn-btn-pri-bg: #111827;
+    --syn-btn-pri-text: #FFFFFF;
+    --syn-btn-sec-bg: #FFFFFF;
+    --syn-btn-sec-border: #E5E7EB;
+    --syn-btn-sec-text: #374151;
+    --syn-chat-bubble-user: #F3F4F6;
+    --syn-chat-bubble-copilot: #FFFFFF;
+    --syn-chat-copilot-border: #E5E7EB;
+    --syn-filter-pill-bg: #FFFFFF;
+    --syn-filter-pill-border: #E5E7EB;
+    --syn-filter-pill-text: #374151;
+    --syn-badge-neutral-bg: #F3F4F6;
+    --syn-badge-neutral-text: #4B5563;
+    --syn-badge-neutral-border: #E5E7EB;
+    --syn-badge-emerald-bg: #DCFCE7;
+    --syn-badge-emerald-text: #15803D;
+    --syn-badge-emerald-border: #BBF7D0;
+    --syn-badge-amber-bg: #FEF3C7;
+    --syn-badge-amber-text: #B45309;
+    --syn-badge-amber-border: #FDE68A;
+    --syn-badge-red-bg: #FEE2E2;
+    --syn-badge-red-text: #B91C1C;
+    --syn-badge-red-border: #FECACA;
+  }
+}
+
+/* ── Shell Architecture ──────────────────────────────────────────────── */
+.synetica-shell {
+  background-color: var(--syn-bg);
+  color: var(--syn-text);
+  min-height: 100vh;
+  width: 100%;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Base text contrast inside the shell */
+.synetica-shell h1,
+.synetica-shell h2,
+.synetica-shell h3,
+.synetica-shell h4,
+.synetica-shell h5,
+.synetica-shell h6 {
+  color: var(--syn-heading);
+}
+
+/* Automatic contrast mappings for utility classes */
+html[data-theme="live"] .synetica-shell .text-neutral-900,
+html[data-theme="dark"] .synetica-shell .text-neutral-900,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-900 {
+  color: var(--syn-heading);
+}
+
+html[data-theme="live"] .synetica-shell .text-neutral-800,
+html[data-theme="dark"] .synetica-shell .text-neutral-800,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-800 {
+  color: var(--syn-text);
+}
+
+html[data-theme="live"] .synetica-shell .text-neutral-700,
+html[data-theme="dark"] .synetica-shell .text-neutral-700,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-700 {
+  color: var(--syn-text);
+}
+
+html[data-theme="live"] .synetica-shell .text-neutral-600,
+html[data-theme="dark"] .synetica-shell .text-neutral-600,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-600 {
+  color: var(--syn-muted);
+}
+
+html[data-theme="live"] .synetica-shell .text-neutral-500,
+html[data-theme="dark"] .synetica-shell .text-neutral-500,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-500 {
+  color: var(--syn-muted);
+}
+
+html[data-theme="live"] .synetica-shell .text-neutral-400,
+html[data-theme="dark"] .synetica-shell .text-neutral-400,
+:root:not([data-theme="light"]) .synetica-shell .text-neutral-400 {
+  color: var(--syn-subtle);
+}
+
+html[data-theme="live"] .synetica-shell .bg-neutral-50,
+html[data-theme="dark"] .synetica-shell .bg-neutral-50,
+:root:not([data-theme="light"]) .synetica-shell .bg-neutral-50 {
+  background-color: var(--syn-card-subtle);
+}
+
+html[data-theme="live"] .synetica-shell .bg-neutral-100,
+html[data-theme="dark"] .synetica-shell .bg-neutral-100,
+:root:not([data-theme="light"]) .synetica-shell .bg-neutral-100 {
+  background-color: var(--syn-pill-hover);
+}
+
+html[data-theme="live"] .synetica-shell .border-neutral-200,
+html[data-theme="dark"] .synetica-shell .border-neutral-200,
+html[data-theme="live"] .synetica-shell .border-neutral-100,
+html[data-theme="dark"] .synetica-shell .border-neutral-100,
+:root:not([data-theme="light"]) .synetica-shell .border-neutral-200,
+:root:not([data-theme="light"]) .synetica-shell .border-neutral-100 {
+  border-color: var(--syn-border);
+}
+
+/* ── Top Pill Navigation ─────────────────────────────────────────────── */
+.syn-header {
+  background: var(--syn-header-bg) !important;
+  border-bottom: 1px solid var(--syn-header-border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.syn-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--syn-muted);
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.syn-nav-pill:hover {
+  color: var(--syn-heading);
+  background: var(--syn-pill-hover);
+  border-color: var(--syn-border);
+}
+
+/* Default / Light Theme Active Pill: Crisp elevated white capsule with dark text */
+.syn-nav-pill.active {
+  background: #FFFFFF !important;
+  color: #111827 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.syn-nav-pill.active svg {
+  color: #111827 !important;
+}
+
+/* Dark & Live Themes Active Pill: High-contrast translucent dark glass capsule with white text */
+html[data-theme="dark"] .syn-nav-pill.active,
+html[data-theme="live"] .syn-nav-pill.active,
+:root:not([data-theme="light"]) .syn-nav-pill.active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .syn-nav-pill.active svg,
+html[data-theme="live"] .syn-nav-pill.active svg,
+:root:not([data-theme="light"]) .syn-nav-pill.active svg {
+  color: #FFFFFF !important;
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-theme="system"] .syn-nav-pill.active {
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  html[data-theme="system"] .syn-nav-pill.active svg {
+    color: #111827 !important;
+  }
+}
+
+/* ── Synetica Card ("Cart") Design ───────────────────────────────────── */
+.syn-card {
+  background: var(--syn-card) !important;
+  border-radius: 24px;
+  border: 1px solid var(--syn-border) !important;
+  box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 24px;
+  position: relative;
+  color: var(--syn-text) !important;
+}
+
+.syn-card:hover {
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html[data-theme="light"] .syn-card:hover {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ── 3D Stacked Translucent Insight Cards ────────────────────────────── */
+.stacked-cards-container {
+  position: relative;
+  width: 320px;
+  height: 180px;
+  perspective: 1000px;
+}
+
+.stacked-card-back-2 {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(134, 239, 172, 0.35) 0%, rgba(34, 197, 94, 0.25) 100%);
+  transform: rotate(6deg) scale(0.92) translate(16px, -12px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  opacity: 0.7;
+}
+
+.stacked-card-back-1 {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(167, 243, 208, 0.55) 0%, rgba(52, 211, 153, 0.45) 100%);
+  transform: rotate(3deg) scale(0.96) translate(8px, -6px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  opacity: 0.85;
+}
+
+.stacked-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #86EFAC 0%, #4ADE80 40%, #22C55E 100%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 36px -8px rgba(34, 197, 94, 0.4), 0 4px 12px rgba(34, 197, 94, 0.2);
+  padding: 22px;
+  color: #0F291E !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transform: rotate(0deg);
+  transition: transform 0.3s ease;
+}
+
+.stacked-card-front:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+/* ── Filter Pills ────────────────────────────────────────────────────── */
+.syn-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--syn-filter-pill-border);
+  background: var(--syn-filter-pill-bg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--syn-filter-pill-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.syn-filter-pill:hover {
+  background: var(--syn-pill-hover);
+  border-color: var(--syn-border);
+}
+
+/* ── Embedded AI Assistant Panel (Right Column) ──────────────────────── */
+.ai-assistant-panel {
+  background: var(--syn-card) !important;
+  border-radius: 28px;
+  border: 1px solid var(--syn-border) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  position: sticky;
+  top: 96px;
+  overflow: hidden;
+}
+
+.ai-chat-bubble-user {
+  background: var(--syn-chat-bubble-user);
+  border-radius: 18px 18px 4px 18px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--syn-text);
+  line-height: 1.5;
+  max-width: 90%;
+  margin-left: auto;
+}
+
+.ai-chat-bubble-copilot {
+  background: var(--syn-chat-bubble-copilot);
+  border: 1px solid var(--syn-chat-copilot-border);
+  border-radius: 18px 18px 18px 4px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--syn-text);
+  line-height: 1.55;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.ai-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: var(--syn-card-subtle);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--syn-muted);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid var(--syn-border);
+}
+
+.ai-action-chip:hover {
+  background: var(--syn-pill-hover);
+  color: var(--syn-heading);
+}
+
+.ai-input-bar {
+  background: var(--syn-input-bg);
+  border: 1px solid var(--syn-input-border);
+  border-radius: 9999px;
+  padding: 6px 6px 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-input-bar:focus-within {
+  border-color: var(--syn-mint);
+  box-shadow: 0 0 0 3px var(--syn-mint-glow);
+}
+
+/* ── Responsive adjustments ──────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .ai-assistant-panel {
+    height: auto;
+    position: static;
+  }
+}
+
+/* ── Reusable Synetica Badges, Buttons & Inputs ──────────────────────── */
+.syn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.syn-badge-emerald {
+  background: var(--syn-badge-emerald-bg);
+  color: var(--syn-badge-emerald-text);
+  border: 1px solid var(--syn-badge-emerald-border);
+}
+
+.syn-badge-amber {
+  background: var(--syn-badge-amber-bg);
+  color: var(--syn-badge-amber-text);
+  border: 1px solid var(--syn-badge-amber-border);
+}
+
+.syn-badge-red {
+  background: var(--syn-badge-red-bg);
+  color: var(--syn-badge-red-text);
+  border: 1px solid var(--syn-badge-red-border);
+}
+
+.syn-badge-neutral {
+  background: var(--syn-badge-neutral-bg);
+  color: var(--syn-badge-neutral-text);
+  border: 1px solid var(--syn-badge-neutral-border);
+}
+
+.syn-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--syn-btn-pri-bg);
+  color: var(--syn-btn-pri-text);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.syn-btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.syn-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--syn-btn-sec-bg);
+  color: var(--syn-btn-sec-text);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--syn-btn-sec-border);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.syn-btn-secondary:hover {
+  background: var(--syn-pill-hover);
+  border-color: var(--syn-border);
+}
+
+.syn-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--syn-input-border);
+  background: var(--syn-input-bg);
+  color: var(--syn-input-text);
+  font-size: 13.5px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.syn-input:focus {
+  border-color: var(--syn-mint);
+  box-shadow: 0 0 0 3px var(--syn-mint-glow);
+}
+
+/* ── Skeleton & Shimmer Animation ────────────────────────────────────── */
+@keyframes syn-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.syn-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.1) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 400% 100%;
+  animation: syn-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+html[data-theme="light"] .syn-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 25%,
+    rgba(0, 0, 0, 0.09) 37%,
+    rgba(0, 0, 0, 0.04) 63%
+  );
+  background-size: 400% 100%;
+  animation: syn-shimmer 1.5s ease-in-out infinite;
+}
