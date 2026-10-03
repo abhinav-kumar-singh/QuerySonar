@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { generateLiveContentBlueprint } from "@/lib/geo-engine/generators/geo-optimizer";
 

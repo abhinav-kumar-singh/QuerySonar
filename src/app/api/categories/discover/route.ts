@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { discoverBrandCategories } from "@/lib/geo-engine/generators/query-generator";
 

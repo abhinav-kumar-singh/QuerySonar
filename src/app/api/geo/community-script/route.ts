@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { generateLiveCommunityScript } from "@/lib/geo-engine/generators/geo-optimizer";
 

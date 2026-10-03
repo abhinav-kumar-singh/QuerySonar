@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { callOpenRouterChatCompletion, getCleanOpenRouterKey } from "@/lib/geo-engine/openrouter-client";
 import { callRequestyChatCompletion, getCleanRequestyKey, REQUESTY_MODEL_MAP } from "@/lib/geo-engine/requesty-client";
