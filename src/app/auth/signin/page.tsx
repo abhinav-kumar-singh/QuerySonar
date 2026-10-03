@@ -11,7 +11,6 @@ import {
   Search,
   Zap,
   Check,
-  Plus,
   Loader2,
   ArrowLeft,
   Mail,
@@ -44,8 +43,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/language-context";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { AIEngineRow } from "@/components/ui/ai-engine-icons";
 import {
   V2RadialSpokeSpeedometer,
@@ -70,9 +67,6 @@ export default function SignInPage() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "competitors" | "sources" | "queries" | "actions"
   >("overview");
-
-  // Selected sub-engine filter in preview
-  const [selectedEngineFilter, setSelectedEngineFilter] = useState<string>("all");
 
   // Interactive Query tab selection
   const [selectedPersonaQuery, setSelectedPersonaQuery] = useState<number>(0);
@@ -211,100 +205,94 @@ export default function SignInPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--syn-bg,#0B0F17)] text-[var(--syn-text,#F8FAFC)] flex flex-col justify-between p-3 sm:p-6 lg:p-8">
+    <div className="v2 synetica-shell min-h-screen bg-[var(--syn-bg,#08080A)] text-[var(--syn-text,#D4D4D8)] flex flex-col justify-between p-4 sm:p-6 lg:p-8">
       {/* Top Header Bar */}
-      <div className="max-w-[1360px] w-full mx-auto flex items-center justify-between py-2">
+      <div className="max-w-[1480px] w-full mx-auto flex items-center justify-between py-2">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--syn-muted,#94A3B8)] hover:text-[var(--syn-heading,#FFFFFF)] transition-colors group"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--syn-muted)] hover:text-[var(--syn-heading)] transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
           <span>{t("nav.returnToLanding")}</span>
         </Link>
 
         {/* Central Logo */}
-        <Link href="/" className="flex items-center gap-2 font-extrabold text-base tracking-tight text-[var(--syn-heading,#FFFFFF)]">
+        <Link href="/" className="flex items-center gap-2 font-extrabold text-base tracking-tight text-[var(--syn-heading)]">
           <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#86EFAC] text-neutral-950 shadow-sm">
             <Sparkles className="h-4 w-4 fill-neutral-950" />
           </div>
           <span>QuerySonar</span>
         </Link>
-
-        {/* Controls */}
-        <div className="flex items-center gap-2">
-          <ThemeSwitcher compact />
-          <LanguageSwitcher compact />
-        </div>
       </div>
 
-      {/* Main Dual-Column Split Screen Container */}
-      <div className="max-w-[1360px] w-full mx-auto my-4 flex-1 flex flex-col justify-center">
-        <div className="rounded-3xl bg-[var(--syn-card,#111827)] border border-[var(--syn-border,rgba(255,255,255,0.08))] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[700px]">
+      {/* Main Dual-Column Split Screen Container (Roomy & High-Contrast) */}
+      <div className="max-w-[1480px] w-full mx-auto my-auto flex-1 flex flex-col justify-center py-4">
+        <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[760px] lg:min-h-[820px]">
           
           {/* ═══════════════════════════════════════════════════════════════
               LEFT COLUMN: AUTHENTICATION / LOGIN FORM
               ═══════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-5 p-6 sm:p-10 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--syn-border,rgba(255,255,255,0.08))] bg-[var(--syn-card,#111827)]">
+          <div className="lg:col-span-5 p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--syn-border)] bg-[var(--syn-card)]">
             <div>
               {/* Form Title */}
-              <div className="mb-6">
-                <span className="v2-badge-pill mb-3 text-[10px] font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-400 !border-emerald-500/20">
-                  <Sparkles className="w-3 h-3" />
+              <div className="mb-8">
+                <span className="v2-badge-pill mb-3 text-[11px] font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20">
+                  <Sparkles className="w-3.5 h-3.5" />
                   {t("auth.badgeIntelligence")}
                 </span>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--syn-heading,#FFFFFF)] mb-2">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--syn-heading)] mb-2.5">
                   {t("auth.readyToDominate")}
                 </h1>
-                <p className="text-xs text-[var(--syn-muted,#94A3B8)] leading-relaxed">
+                <p className="text-sm text-[var(--syn-muted)] leading-relaxed">
                   {t("auth.signInDesc")}
                 </p>
               </div>
 
               {/* Email & Password Form */}
-              <form onSubmit={handleEmailSignIn} className="space-y-3.5">
+              <form onSubmit={handleEmailSignIn} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--syn-heading,#FFFFFF)] block">
+                  <label className="text-xs font-semibold text-[var(--syn-heading)] block">
                     {t("auth.emailLabel")}
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-[var(--syn-muted,#94A3B8)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Mail className="w-4 h-4 text-[var(--syn-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("auth.emailPlaceholder")}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-[var(--syn-heading,#FFFFFF)] block">
+                    <label className="text-xs font-semibold text-[var(--syn-heading)] block">
                       {t("auth.passwordLabel")}
                     </label>
                     <button
                       type="button"
                       onClick={() => alert("Please continue with Google for seamless one-click authentication.")}
-                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+                      className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors"
                     >
                       {t("auth.forgotPassword")}
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-[var(--syn-muted,#94A3B8)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Lock className="w-4 h-4 text-[var(--syn-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t("auth.passwordPlaceholder")}
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[var(--syn-input-border,rgba(255,255,255,0.12))] bg-[var(--syn-input-bg,#0B0F17)] text-[var(--syn-input-text,#F8FAFC)] text-xs placeholder:text-[var(--syn-muted,#64748B)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full pl-11 pr-11 py-3 rounded-2xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm placeholder:text-[var(--syn-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-xs"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--syn-muted,#94A3B8)] hover:text-[var(--syn-heading,#FFFFFF)]"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--syn-muted)] hover:text-[var(--syn-heading)]"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -312,8 +300,8 @@ export default function SignInPage() {
                 </div>
 
                 {emailSentNotice && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
                     <span>Please use the Google sign-in button below to access your live dashboard directly.</span>
                   </div>
                 )}
@@ -322,19 +310,19 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {t("auth.signInBtn")}
                 </button>
               </form>
 
               {/* Divider */}
-              <div className="my-5 flex items-center gap-3">
-                <div className="flex-1 h-px bg-[var(--syn-border,rgba(255,255,255,0.08))]" />
-                <span className="text-[11px] text-[var(--syn-muted,#64748B)] uppercase tracking-wider font-mono">
+              <div className="my-6 flex items-center gap-3">
+                <div className="flex-1 h-px bg-[var(--syn-border)]" />
+                <span className="text-[11px] text-[var(--syn-subtle)] uppercase tracking-wider font-mono">
                   {t("auth.orContinueWith")}
                 </span>
-                <div className="flex-1 h-px bg-[var(--syn-border,rgba(255,255,255,0.08))]" />
+                <div className="flex-1 h-px bg-[var(--syn-border)]" />
               </div>
 
               {/* Google OAuth Button */}
@@ -342,11 +330,11 @@ export default function SignInPage() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[var(--syn-card-inner,#1E293B)] hover:bg-[var(--syn-card-subtle,#334155)] border border-[var(--syn-border,rgba(255,255,255,0.1))] text-[var(--syn-heading,#FFFFFF)] text-xs font-semibold shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-sm font-semibold shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span>{t("auth.connectingGoogle")}</span>
                   </>
                 ) : (
@@ -375,13 +363,13 @@ export default function SignInPage() {
               </button>
 
               {/* Create Free Account Link */}
-              <div className="mt-4 text-center">
-                <span className="text-xs text-[var(--syn-muted,#94A3B8)]">
+              <div className="mt-5 text-center">
+                <span className="text-xs text-[var(--syn-muted)]">
                   {t("auth.noAccount")}{" "}
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="text-emerald-400 hover:text-emerald-300 font-bold transition-colors cursor-pointer"
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-bold transition-colors cursor-pointer"
                   >
                     {t("auth.createFreeAccount")}
                   </button>
@@ -390,8 +378,8 @@ export default function SignInPage() {
             </div>
 
             {/* Terms Footer */}
-            <div className="mt-6 pt-4 border-t border-[var(--syn-border,rgba(255,255,255,0.08))] text-center">
-              <p className="text-[11px] text-[var(--syn-muted,#64748B)]">
+            <div className="mt-8 pt-4 border-t border-[var(--syn-border)] text-center">
+              <p className="text-xs text-[var(--syn-subtle)]">
                 {t("footer.rights")} · <Link href="/terms" className="hover:underline">{t("footer.terms")}</Link> · <Link href="/privacy" className="hover:underline">{t("footer.privacy")}</Link>
               </p>
             </div>
@@ -400,20 +388,20 @@ export default function SignInPage() {
           {/* ═══════════════════════════════════════════════════════════════
               RIGHT COLUMN: FULL QUERYSONAR V2 DASHBOARD INTERACTIVE PREVIEW
               ═══════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-7 bg-[var(--syn-bg,#0B0F17)]/95 p-5 sm:p-7 flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-7 bg-[var(--syn-card-subtle)] p-6 sm:p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden">
             
             {/* Top Interactive App Header with Synetica Navigation Pills */}
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between pb-3 border-b border-white/5 flex-wrap gap-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--syn-border)] flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--syn-muted,#94A3B8)]">
+                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--syn-heading)] px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                     QuerySonar V2 Live Platform
                   </span>
                 </div>
                 
                 {/* 5 Real QuerySonar Navigation Tabs (Overview, Competitors, Sources, Queries, Actions) */}
-                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-full border border-white/10">
+                <div className="flex items-center gap-1 bg-[var(--syn-card-inner)] p-1 rounded-full border border-[var(--syn-border)]">
                   {[
                     { id: "overview", label: t("nav.dashboard") || "Overview", icon: LayoutDashboard },
                     { id: "competitors", label: t("nav.competitors") || "Competitors", icon: Users },
@@ -428,13 +416,13 @@ export default function SignInPage() {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                           isCurrent
-                            ? "bg-[#86EFAC] text-neutral-950 font-bold shadow-xs"
-                            : "text-[var(--syn-muted,#94A3B8)] hover:text-white"
+                            ? "bg-emerald-500 text-neutral-950 font-bold shadow-xs"
+                            : "text-[var(--syn-muted)] hover:text-[var(--syn-heading)] hover:bg-[var(--syn-card)]"
                         }`}
                       >
-                        <Icon className="w-3 h-3" />
+                        <Icon className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">{tab.label}</span>
                       </button>
                     );
@@ -443,50 +431,50 @@ export default function SignInPage() {
               </div>
 
               {/* Mini App Content Area based on Selected Tab */}
-              <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+              <div className="space-y-3.5">
 
                 {/* ── 1. OVERVIEW TAB PREVIEW (Full V2 Speedometer + Consensus Ladder + Sentiment) ── */}
                 {activeTab === "overview" && (
-                  <div className="space-y-3 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
                     {/* 4 Bento KPI Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <span className="text-[10px] text-[var(--syn-muted)] font-mono uppercase font-bold">
                           Share of Voice
                         </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-xl font-extrabold text-emerald-400 font-mono">82%</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">+12%</span>
+                        <div className="flex items-baseline gap-1 mt-1.5">
+                          <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">82%</span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">+12%</span>
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                      <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <span className="text-[10px] text-[var(--syn-muted)] font-mono uppercase font-bold">
                           Consensus Rank
                         </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-xl font-extrabold text-white font-mono">#1</span>
-                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono">/ 6 Models</span>
+                        <div className="flex items-baseline gap-1 mt-1.5">
+                          <span className="text-2xl font-extrabold text-[var(--syn-heading)] font-mono">#1</span>
+                          <span className="text-[10px] text-[var(--syn-muted)] font-mono">/ 6 Models</span>
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                      <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <span className="text-[10px] text-[var(--syn-muted)] font-mono uppercase font-bold">
                           Live Citations
                         </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-xl font-extrabold text-indigo-400 font-mono">142</span>
-                          <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono">8 Channels</span>
+                        <div className="flex items-baseline gap-1 mt-1.5">
+                          <span className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">142</span>
+                          <span className="text-[10px] text-[var(--syn-muted)] font-mono">8 Channels</span>
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] font-mono uppercase font-bold">
+                      <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <span className="text-[10px] text-[var(--syn-muted)] font-mono uppercase font-bold">
                           Technical GEO
                         </span>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-xl font-extrabold text-cyan-400 font-mono">94</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">/ 100</span>
+                        <div className="flex items-baseline gap-1 mt-1.5">
+                          <span className="text-2xl font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">94</span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">/ 100</span>
                         </div>
                       </div>
                     </div>
@@ -494,30 +482,30 @@ export default function SignInPage() {
                     {/* V2 Chart Dual Row: Speedometer + Multi-Engine Equalizer Matrix */}
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                       {/* Left: V2 Radial Spoke Speedometer */}
-                      <div className="sm:col-span-5 p-3.5 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="sm:col-span-5 p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                          <span className="text-xs font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                            <Trophy className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Share of Voice</span>
                           </span>
-                          <span className="text-[10px] font-mono text-emerald-400 font-bold">Top 1 Pick</span>
+                          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">Top 1 Pick</span>
                         </div>
-                        <div className="py-1">
-                          <V2RadialSpokeSpeedometer value={82} max={100} size={180} subtitle="Average Visibility" />
+                        <div className="py-2">
+                          <V2RadialSpokeSpeedometer value={82} max={100} size={200} subtitle="Average Visibility" />
                         </div>
-                        <div className="text-center text-[10px] font-mono text-[var(--syn-muted,#94A3B8)]">
+                        <div className="text-center text-[10px] font-mono text-[var(--syn-muted)]">
                           Hover spoke to inspect percentile
                         </div>
                       </div>
 
                       {/* Right: Multi-Engine Consensus Equalizer Ladder */}
-                      <div className="sm:col-span-7 p-3.5 rounded-2xl bg-black/40 border border-white/5 flex flex-col justify-between">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
-                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                      <div className="sm:col-span-7 p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                          <span className="text-xs font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                            <Bot className="w-3.5 h-3.5 text-indigo-500" />
                             <span>Engine Consensus Matrix</span>
                           </span>
-                          <span className="text-[10px] font-mono text-emerald-400 font-semibold">6/6 Models Active</span>
+                          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">6/6 Models Active</span>
                         </div>
                         <div className="py-1">
                           <V2EqualizerLadderMatrix
@@ -533,13 +521,13 @@ export default function SignInPage() {
                     </div>
 
                     {/* V2 Sentiment Breakdown Donut Bar */}
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                      <div className="flex items-center justify-between text-xs pb-1 border-b border-white/5">
-                        <span className="font-bold text-white flex items-center gap-1.5">
-                          <Smile className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-2 shadow-xs">
+                      <div className="flex items-center justify-between text-xs pb-1.5 border-b border-[var(--syn-border)]">
+                        <span className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                          <Smile className="w-3.5 h-3.5 text-emerald-500" />
                           <span>AI Sentiment Distribution</span>
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-400">83% Positive Dominance</span>
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">83% Positive Dominance</span>
                       </div>
                       <V2TricolorCapsulePill
                         positivePct={83}
@@ -555,48 +543,48 @@ export default function SignInPage() {
 
                 {/* ── 2. COMPETITORS TAB PREVIEW (Displacement Analysis & Head-to-Head) ── */}
                 {activeTab === "competitors" && (
-                  <div className="space-y-3 animate-in fade-in duration-200">
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-3">
-                      <div className="flex items-center justify-between text-xs pb-1.5 border-b border-white/5">
-                        <span className="font-bold text-white flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-indigo-400" />
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-3.5 shadow-xs">
+                      <div className="flex items-center justify-between text-xs pb-2 border-b border-[var(--syn-border)]">
+                        <span className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-indigo-500" />
                           <span>Head-to-Head Competitive Displacement</span>
                         </span>
-                        <span className="text-[10px] font-mono text-indigo-300">4 Brands Monitored</span>
+                        <span className="text-[10px] font-mono text-indigo-500">4 Brands Monitored</span>
                       </div>
 
                       {/* Interactive Competitors List */}
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         {competitorsList.map((comp, idx) => {
                           const isSelected = selectedCompetitorIdx === idx;
                           return (
                             <div
                               key={idx}
                               onClick={() => setSelectedCompetitorIdx(idx)}
-                              className={`p-3 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                              className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
                                 isSelected
-                                  ? "bg-emerald-500/15 border-emerald-500 shadow-xs scale-[1.01]"
+                                  ? "bg-emerald-500/15 border-emerald-500 shadow-xs"
                                   : comp.isBrand
-                                  ? "bg-emerald-500/5 border-emerald-500/20 text-white"
-                                  : "bg-white/5 border-white/5 text-neutral-300 hover:border-white/20"
+                                  ? "bg-emerald-500/5 border-emerald-500/20 text-[var(--syn-heading)]"
+                                  : "bg-[var(--syn-card-inner)] border-[var(--syn-border)] text-[var(--syn-heading)] hover:border-[var(--syn-border-hover)]"
                               }`}
                             >
-                              <div className="flex items-center gap-2.5">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                                  comp.isBrand ? "bg-[#86EFAC] text-neutral-950" : "bg-white/10 text-neutral-300"
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
+                                  comp.isBrand ? "bg-[#86EFAC] text-neutral-950" : "bg-[var(--syn-card)] border border-[var(--syn-border)] text-[var(--syn-heading)]"
                                 }`}>
                                   {comp.name[0]}
                                 </div>
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <span className="font-bold block text-xs text-white">{comp.name}</span>
+                                    <span className="font-bold block text-sm text-[var(--syn-heading)]">{comp.name}</span>
                                     {comp.isBrand && (
-                                      <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-[9px] font-mono text-emerald-400 border border-emerald-500/30">
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[9px] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                         Your Brand
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-[10px] text-[var(--syn-muted,#94A3B8)]">
+                                  <span className="text-[11px] text-[var(--syn-muted)]">
                                     {comp.status} · {comp.channels}
                                   </span>
                                 </div>
@@ -604,12 +592,12 @@ export default function SignInPage() {
 
                               <div className="text-right flex items-center gap-3">
                                 <div>
-                                  <span className={`font-mono font-bold block text-xs ${comp.isBrand ? "text-emerald-400" : "text-white"}`}>
+                                  <span className={`font-mono font-bold block text-sm ${comp.isBrand ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--syn-heading)]"}`}>
                                     {comp.sov}% SOV
                                   </span>
-                                  <span className="text-[9px] text-[var(--syn-muted,#94A3B8)] font-mono">{comp.wins}</span>
+                                  <span className="text-[10px] text-[var(--syn-muted)] font-mono">{comp.wins}</span>
                                 </div>
-                                <ChevronRight className="w-4 h-4 text-[var(--syn-muted,#94A3B8)]" />
+                                <ChevronRight className="w-4 h-4 text-[var(--syn-muted)]" />
                               </div>
                             </div>
                           );
@@ -617,22 +605,22 @@ export default function SignInPage() {
                       </div>
 
                       {/* Detail Breakdown for Selected Competitor */}
-                      <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-white">
+                      <div className="p-4 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-[var(--syn-heading)]">
                             Engine Visibility Breakdown: {competitorsList[selectedCompetitorIdx].name}
                           </span>
-                          <span className="font-mono text-emerald-400 font-bold">
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                             {competitorsList[selectedCompetitorIdx].sentiment} Sentiment
                           </span>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                           {Object.entries(competitorsList[selectedCompetitorIdx].engines).map(([engKey, score]) => (
-                            <div key={engKey} className="p-2 rounded-lg bg-black/40 border border-white/5 text-center">
-                              <span className="text-[9px] uppercase font-mono text-[var(--syn-muted,#94A3B8)] block">
+                            <div key={engKey} className="p-2.5 rounded-xl bg-[var(--syn-card)] border border-[var(--syn-border)] text-center">
+                              <span className="text-[9px] uppercase font-mono text-[var(--syn-muted)] block">
                                 {engKey}
                               </span>
-                              <span className="text-xs font-mono font-bold text-white mt-0.5 block">
+                              <span className="text-sm font-mono font-bold text-[var(--syn-heading)] mt-0.5 block">
                                 {score}%
                               </span>
                             </div>
@@ -645,9 +633,9 @@ export default function SignInPage() {
 
                 {/* ── 3. SOURCES TAB PREVIEW (Ecosystem Ring + 8 Channel Grid) ── */}
                 {activeTab === "sources" && (
-                  <div className="space-y-3 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
                     {/* V2 Citation Ecosystem Ring */}
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-xs">
                       <V2CitationEcosystemRing
                         pressCount={12}
                         reviewsCount={10}
@@ -659,28 +647,28 @@ export default function SignInPage() {
                     </div>
 
                     {/* 8-Channel Grounding Breakdown */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
-                        { title: "Reddit & HackerNews", desc: "48 discussions cited across r/developer & r/marketing", icon: MessageSquare, badge: "Live Harvester", color: "text-orange-400" },
-                        { title: "Google News & Press", desc: "32 editorial articles cited in latest LLM updates", icon: Newspaper, badge: "Real-Time PR", color: "text-blue-400" },
-                        { title: "Wikipedia & Knowledge Graph", desc: "Entity recognition & verified factual anchoring", icon: BookOpen, badge: "High Authority", color: "text-purple-400" },
-                        { title: "Technical GEO & llms.txt", desc: "robots.txt allows GPTBot, ClaudeBot, PerplexityBot", icon: Code2, badge: "200 OK Validated", color: "text-emerald-400" },
-                        { title: "G2 & Capterra Review Hubs", desc: "18 verified software reviews ingested by Perplexity Pro", icon: Star, badge: "Buyer Intent", color: "text-amber-400" },
-                        { title: "YouTube & Video Transcripts", desc: "14 tutorial transcripts parsed by Gemini & SearchGPT", icon: Video, badge: "Multimodal", color: "text-rose-400" },
+                        { title: "Reddit & HackerNews", desc: "48 discussions cited across r/developer & r/marketing", icon: MessageSquare, badge: "Live Harvester", color: "text-orange-500" },
+                        { title: "Google News & Press", desc: "32 editorial articles cited in latest LLM updates", icon: Newspaper, badge: "Real-Time PR", color: "text-blue-500" },
+                        { title: "Wikipedia & Knowledge Graph", desc: "Entity recognition & verified factual anchoring", icon: BookOpen, badge: "High Authority", color: "text-purple-500" },
+                        { title: "Technical GEO & llms.txt", desc: "robots.txt allows GPTBot, ClaudeBot, PerplexityBot", icon: Code2, badge: "200 OK Validated", color: "text-emerald-500" },
+                        { title: "G2 & Capterra Review Hubs", desc: "18 verified software reviews ingested by Perplexity Pro", icon: Star, badge: "Buyer Intent", color: "text-amber-500" },
+                        { title: "YouTube & Video Transcripts", desc: "14 tutorial transcripts parsed by Gemini & SearchGPT", icon: Video, badge: "Multimodal", color: "text-rose-500" },
                       ].map((src, i) => {
                         const Icon = src.icon;
                         return (
-                          <div key={i} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                          <div key={i} className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-1.5 shadow-xs">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <Icon className={`w-3.5 h-3.5 ${src.color}`} />
-                                <span className="text-white font-bold text-[11px]">{src.title}</span>
+                              <div className="flex items-center gap-2">
+                                <Icon className={`w-4 h-4 ${src.color}`} />
+                                <span className="text-[var(--syn-heading)] font-bold text-xs">{src.title}</span>
                               </div>
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-neutral-300">
+                              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-[var(--syn-card-inner)] border border-[var(--syn-border)] text-[var(--syn-muted)]">
                                 {src.badge}
                               </span>
                             </div>
-                            <p className="text-[10px] text-[var(--syn-muted,#94A3B8)] leading-relaxed">
+                            <p className="text-xs text-[var(--syn-muted)] leading-relaxed">
                               {src.desc}
                             </p>
                           </div>
@@ -692,32 +680,32 @@ export default function SignInPage() {
 
                 {/* ── 4. QUERIES TAB PREVIEW (4-Persona AI Intent Queries & LLM Transcripts) ── */}
                 {activeTab === "queries" && (
-                  <div className="space-y-3 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between text-xs font-bold text-white pb-1 border-b border-white/5">
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-[var(--syn-heading)] pb-2 border-b border-[var(--syn-border)]">
                       <span className="flex items-center gap-1.5">
-                        <Search className="w-3.5 h-3.5 text-emerald-400" />
+                        <Search className="w-3.5 h-3.5 text-emerald-500" />
                         <span>4-Persona AI Buyer Query Probes</span>
                       </span>
-                      <span className="text-[10px] font-mono text-[var(--syn-muted,#94A3B8)]">Click query to probe models</span>
+                      <span className="text-[10px] font-mono text-[var(--syn-muted)]">Click query to probe models</span>
                     </div>
 
                     {/* Query Pills Selection */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {personaQueries.map((pq, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => setSelectedPersonaQuery(idx)}
-                          className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                          className={`p-3 rounded-2xl border text-left text-xs transition-all cursor-pointer ${
                             selectedPersonaQuery === idx
-                              ? "bg-emerald-500/15 border-emerald-500/40 text-white shadow-xs"
-                              : "bg-black/40 border-white/5 text-[var(--syn-muted,#94A3B8)] hover:text-white"
+                              ? "bg-emerald-500/15 border-emerald-500 text-[var(--syn-heading)] shadow-xs"
+                              : "bg-[var(--syn-card)] border-[var(--syn-border)] text-[var(--syn-muted)] hover:text-[var(--syn-heading)] hover:border-[var(--syn-border-hover)]"
                           }`}
                         >
-                          <span className="text-[9px] font-mono uppercase font-bold text-emerald-400 block mb-0.5">
+                          <span className="text-[9px] font-mono uppercase font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
                             {pq.persona} Intent
                           </span>
-                          <span className="text-[11px] font-medium leading-snug line-clamp-1 block text-white">
+                          <span className="text-xs font-semibold leading-snug line-clamp-1 block text-[var(--syn-heading)]">
                             &ldquo;{pq.query}&rdquo;
                           </span>
                         </button>
@@ -725,35 +713,35 @@ export default function SignInPage() {
                     </div>
 
                     {/* Active Probe Result Preview with Real Model Breakdown */}
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2.5">
-                      <div className="flex items-center justify-between text-xs border-b border-white/5 pb-1.5">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between text-xs border-b border-[var(--syn-border)] pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-white">Target Brand:</span>
-                          <span className="text-emerald-400 font-bold">{personaQueries[selectedPersonaQuery].winner}</span>
+                          <span className="font-bold text-[var(--syn-heading)]">Target Brand:</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{personaQueries[selectedPersonaQuery].winner}</span>
                         </div>
-                        <span className="font-mono text-emerald-400 font-bold">
+                        <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                           {personaQueries[selectedPersonaQuery].sov}% SOV ({personaQueries[selectedPersonaQuery].engines})
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-neutral-300 leading-relaxed bg-white/5 p-2.5 rounded-xl font-sans">
+                      <p className="text-xs text-[var(--syn-text)] leading-relaxed bg-[var(--syn-card-inner)] p-3 rounded-xl font-sans border border-[var(--syn-border)]">
                         {personaQueries[selectedPersonaQuery].engineNote}
                       </p>
 
                       {/* Multi-Model Specific Grounding Quotes */}
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[10px] font-mono uppercase text-[var(--syn-muted,#94A3B8)] block font-semibold">
+                      <div className="space-y-2 pt-1">
+                        <span className="text-[10px] font-mono uppercase text-[var(--syn-muted)] block font-semibold">
                           Live Engine Grounding Transcripts:
                         </span>
                         {personaQueries[selectedPersonaQuery].models.map((m, mIdx) => (
-                          <div key={mIdx} className="p-2 rounded-lg bg-white/5 border border-white/5 flex items-start justify-between gap-2 text-[11px]">
+                          <div key={mIdx} className="p-2.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex items-start justify-between gap-3 text-xs">
                             <div className="space-y-0.5">
-                              <span className="font-bold text-white block">{m.name}:</span>
-                              <span className="text-[10px] text-[var(--syn-muted,#94A3B8)] leading-tight block">
+                              <span className="font-bold text-[var(--syn-heading)] block">{m.name}:</span>
+                              <span className="text-[11px] text-[var(--syn-muted)] leading-tight block">
                                 &ldquo;{m.citation}&rdquo;
                               </span>
                             </div>
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-mono font-bold shrink-0">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold shrink-0 border border-emerald-500/20">
                               {m.rank}
                             </span>
                           </div>
@@ -765,9 +753,9 @@ export default function SignInPage() {
 
                 {/* ── 5. ACTIONS TAB PREVIEW (Interactive Remediation Battlecards & Playbook) ── */}
                 {activeTab === "actions" && (
-                  <div className="space-y-3 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-200">
                     {/* V2 Optimization Playbook Component */}
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-xs">
                       <V2OptimizationPlaybookCapsules
                         actions={[
                           { id: "1", priority: "high", title: "Deploy standard /llms.txt at root domain", isCompleted: completedActions.includes("llmstxt"), estimatedImpact: "+18% Visibility" },
@@ -779,18 +767,18 @@ export default function SignInPage() {
                     </div>
 
                     {/* Interactive Checklist with Clickable Remediation Tasks */}
-                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-white pb-1 border-b border-white/5">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-2.5 shadow-xs">
+                      <div className="flex items-center justify-between text-xs font-bold text-[var(--syn-heading)] pb-2 border-b border-[var(--syn-border)]">
                         <span className="flex items-center gap-1.5">
-                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <Zap className="w-3.5 h-3.5 text-amber-500" />
                           <span>Tactical GEO Remediation Checklist</span>
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-400">
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
                           {completedActions.length}/4 Tasks Completed
                         </span>
                       </div>
 
-                      <div className="space-y-2 pt-1">
+                      <div className="space-y-2.5 pt-1">
                         {[
                           { id: "llmstxt", title: "Deploy standard /llms.txt at root domain", impact: "+18% AI SOV", effort: "5 mins", cat: "Technical GEO" },
                           { id: "robots", title: "Verify GPTBot & ClaudeBot in robots.txt", impact: "+24% Crawlers", effort: "2 mins", cat: "AI Indexing" },
@@ -802,29 +790,29 @@ export default function SignInPage() {
                             <div
                               key={act.id}
                               onClick={() => toggleAction(act.id)}
-                              className={`p-2.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                              className={`p-3 rounded-2xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
                                 isDone
-                                  ? "bg-emerald-500/10 border-emerald-500/30 text-white"
-                                  : "bg-white/5 border-white/5 text-[var(--syn-muted,#94A3B8)] hover:text-white hover:border-white/20"
+                                  ? "bg-emerald-500/10 border-emerald-500/30 text-[var(--syn-heading)]"
+                                  : "bg-[var(--syn-card-inner)] border-[var(--syn-border)] text-[var(--syn-muted)] hover:text-[var(--syn-heading)] hover:border-[var(--syn-border-hover)]"
                               }`}
                             >
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-3">
                                 <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
                                   isDone
                                     ? "bg-[#86EFAC] text-neutral-950 border-[#86EFAC] font-bold shadow-xs"
-                                    : "border-white/20 bg-black/30"
+                                    : "border-[var(--syn-border)] bg-[var(--syn-card)]"
                                 }`}>
                                   {isDone && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                                 </div>
                                 <div>
-                                  <span className={`font-semibold block text-[11px] ${isDone ? "text-white line-through opacity-80" : "text-white"}`}>
+                                  <span className={`font-semibold block text-xs ${isDone ? "text-[var(--syn-heading)] line-through opacity-80" : "text-[var(--syn-heading)]"}`}>
                                     {act.title}
                                   </span>
-                                  <span className="text-[9px] text-[var(--syn-muted,#94A3B8)]">{act.cat} · {act.effort}</span>
+                                  <span className="text-[10px] text-[var(--syn-muted)]">{act.cat} · {act.effort}</span>
                                 </div>
                               </div>
 
-                              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white/5 border border-white/10 text-emerald-400 shrink-0">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                                 {act.impact}
                               </span>
                             </div>
@@ -839,12 +827,12 @@ export default function SignInPage() {
             </div>
 
             {/* Bottom Glow / Multi-Engine Live Probing Bar */}
-            <div className="mt-3 p-3 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between text-xs flex-wrap gap-2">
+            <div className="mt-4 p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex items-center justify-between text-xs flex-wrap gap-2 shadow-xs">
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-[var(--syn-muted,#94A3B8)]">Active Engines:</span>
+                <span className="text-[11px] font-mono text-[var(--syn-muted)]">Active Engines:</span>
                 <AIEngineRow className="flex items-center gap-2" />
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live V2 Probes Active
               </span>
@@ -855,10 +843,9 @@ export default function SignInPage() {
       </div>
 
       {/* Bottom Legal Footer */}
-      <div className="max-w-[1360px] w-full mx-auto text-center text-xs text-[var(--syn-muted,#64748B)] py-2">
+      <div className="max-w-[1480px] w-full mx-auto text-center text-xs text-[var(--syn-subtle)] py-2">
         {t("footer.rights")}
       </div>
     </div>
   );
 }
-
