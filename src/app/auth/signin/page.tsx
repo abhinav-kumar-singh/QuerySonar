@@ -215,24 +215,6 @@ export default function SignInPage() {
               ═══════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-5 p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--syn-border)] bg-[var(--syn-card)]">
             <div>
-              {/* Back to landing + Brand Logo Header */}
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-[var(--syn-border)]">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--syn-muted)] hover:text-[var(--syn-heading)] transition-colors group"
-                >
-                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                  <span>{t("nav.returnToLanding")}</span>
-                </Link>
-
-                <Link href="/" className="flex items-center gap-2 font-extrabold text-sm tracking-tight text-[var(--syn-heading)]">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#86EFAC] text-neutral-950 shadow-xs">
-                    <Sparkles className="h-3.5 w-3.5 fill-neutral-950" />
-                  </div>
-                  <span>QuerySonar</span>
-                </Link>
-              </div>
-
               {/* Form Title */}
               <div className="mb-8">
                 <span className="v2-badge-pill mb-3 text-[11px] font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20">
