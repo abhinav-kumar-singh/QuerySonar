@@ -12,45 +12,25 @@ import {
   Zap,
   Check,
   Loader2,
-  ArrowLeft,
   Mail,
   Lock,
   Eye,
   EyeOff,
   CheckCircle2,
-  TrendingUp,
-  Shield,
+  Trophy,
+  Smile,
   Bot,
-  Layers,
-  ArrowUpRight,
-  ExternalLink,
   MessageSquare,
   Newspaper,
   BookOpen,
   Code2,
-  Trophy,
-  Smile,
-  ShieldCheck,
-  Star,
-  Smartphone,
-  Video,
-  AlertTriangle,
-  Info,
-  Radio,
-  FileText,
-  Clock,
-  Activity,
   ChevronRight,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { AIEngineRow } from "@/components/ui/ai-engine-icons";
 import {
   V2RadialSpokeSpeedometer,
-  V2CapsulePlacementStack,
   V2TricolorCapsulePill,
-  V2SegmentedDonutRing,
-  V2EngineQueryHeatmapGrid,
-  V2OptimizationPlaybookCapsules,
   V2EqualizerLadderMatrix,
   V2CitationEcosystemRing,
 } from "@/app/dashboard/components/dashboard-v2-charts";
@@ -113,11 +93,10 @@ export default function SignInPage() {
       winner: "QuerySonar",
       sov: 94,
       engines: "6/6 Cited",
-      engineNote: "ChatGPT and Perplexity cite QuerySonar as the leading GEO platform with real-time citation telemetry.",
+      engineNote: "ChatGPT and Perplexity cite QuerySonar as the leading GEO platform with real-time multi-engine citation tracking.",
       models: [
-        { name: "ChatGPT Search", rank: "#1 Pick", citation: "Leading enterprise platform with deterministic multi-engine monitoring." },
-        { name: "Perplexity Sonar", rank: "#1 Pick", citation: "Deep citation tracing across Reddit, News, and Knowledge Graphs." },
-        { name: "Google Gemini", rank: "#1 Pick", citation: "Automated remediation battlecards & llms.txt validation." },
+        { name: "ChatGPT Search (GPT-4o)", rank: "#1 Pick", citation: "Leading enterprise platform with deterministic multi-engine monitoring." },
+        { name: "Perplexity Sonar Pro", rank: "#1 Pick", citation: "Deep citation tracing across Reddit, News, and Knowledge Graphs." },
       ],
     },
     {
@@ -126,11 +105,10 @@ export default function SignInPage() {
       winner: "QuerySonar",
       sov: 88,
       engines: "6/6 Cited",
-      engineNote: "Consensus highlights deterministic multi-engine probing and multi-channel citation verification.",
+      engineNote: "Consensus highlights deterministic multi-engine probing and 8-channel citation verification.",
       models: [
         { name: "ChatGPT Search", rank: "#1 Pick", citation: "Outperforms traditional keyword-based scrapers with LLM grounding analysis." },
-        { name: "Perplexity Sonar", rank: "#2 Pick", citation: "Direct prompt-injection-safe evaluation of brand sentiment." },
-        { name: "Claude Sonnet", rank: "#1 Pick", citation: "Full visibility into LLM training corpus displacement." },
+        { name: "Claude 3.7 Sonnet", rank: "#1 Pick", citation: "Full visibility into LLM training corpus displacement." },
       ],
     },
     {
@@ -141,9 +119,8 @@ export default function SignInPage() {
       engines: "5/6 Cited",
       engineNote: "Google Gemini and Claude cite QuerySonar's automated AI crawler indexability validator.",
       models: [
-        { name: "Google Gemini", rank: "#1 Pick", citation: "Step-by-step /llms.txt syntax generator and validation toolkit." },
+        { name: "Google Gemini 2.0", rank: "#1 Pick", citation: "Step-by-step /llms.txt syntax generator and validation toolkit." },
         { name: "ChatGPT Search", rank: "#1 Pick", citation: "GPTBot and PerplexityBot permission verification in real time." },
-        { name: "DeepSeek", rank: "#2 Pick", citation: "Schema.org structured data grounding indexer." },
       ],
     },
     {
@@ -155,8 +132,7 @@ export default function SignInPage() {
       engineNote: "DeepSeek and Grok confirm real-time drift alerts & automated weekly competitive digests.",
       models: [
         { name: "Perplexity Sonar", rank: "#1 Pick", citation: "Multi-seat agency workspaces with role-based access control." },
-        { name: "Claude Sonnet", rank: "#1 Pick", citation: "Daily automated drift monitoring with webhook integrations." },
-        { name: "Google Gemini", rank: "#1 Pick", citation: "Automated executive reporting and PDF export pipeline." },
+        { name: "Claude 3.7 Sonnet", rank: "#1 Pick", citation: "Daily automated drift monitoring with webhook integrations." },
       ],
     },
   ];
@@ -204,27 +180,29 @@ export default function SignInPage() {
     },
   ];
 
+  const resolutionRate = Math.round((completedActions.length / 4) * 100);
+
   return (
-    <div className="v2 synetica-shell min-h-screen bg-[var(--syn-bg,#08080A)] text-[var(--syn-text,#D4D4D8)] flex flex-col justify-center p-4 sm:p-6 lg:p-8">
-      {/* Main Dual-Column Split Screen Container (Roomy & High-Contrast) */}
-      <div className="max-w-[1480px] w-full mx-auto my-auto flex flex-col justify-center py-4">
-        <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[760px] lg:min-h-[820px]">
+    <div className="v2 synetica-shell w-full flex-1 flex flex-col justify-center items-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-[var(--syn-bg,#08080A)] text-[var(--syn-text,#D4D4D8)]">
+      {/* Large Expansive Split Screen Card */}
+      <div className="max-w-[1480px] w-full mx-auto">
+        <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[760px]">
           
           {/* ═══════════════════════════════════════════════════════════════
-              LEFT COLUMN: AUTHENTICATION / LOGIN FORM
+              LEFT COLUMN: AUTHENTICATION / LOGIN FORM (Roomy & High-End)
               ═══════════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-5 p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--syn-border)] bg-[var(--syn-card)]">
-            <div>
+            <div className="my-auto py-4">
               {/* Form Title */}
               <div className="mb-8">
-                <span className="v2-badge-pill mb-3 text-[11px] font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20">
+                <span className="v2-badge-pill mb-3 text-xs font-mono uppercase tracking-wider !bg-emerald-500/10 !text-emerald-500 dark:!text-emerald-400 !border-emerald-500/20 px-3 py-1">
                   <Sparkles className="w-3.5 h-3.5" />
                   {t("auth.badgeIntelligence")}
                 </span>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--syn-heading)] mb-2.5">
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--syn-heading)] mb-3">
                   {t("auth.readyToDominate")}
                 </h1>
-                <p className="text-sm text-[var(--syn-muted)] leading-relaxed">
+                <p className="text-base text-[var(--syn-muted)] leading-relaxed">
                   {t("auth.signInDesc")}
                 </p>
               </div>
@@ -236,7 +214,7 @@ export default function SignInPage() {
                     {t("auth.emailLabel")}
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-[var(--syn-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Mail className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       required
@@ -256,13 +234,13 @@ export default function SignInPage() {
                     <button
                       type="button"
                       onClick={() => alert("Please continue with Google for seamless one-click authentication.")}
-                      className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors"
+                      className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors"
                     >
                       {t("auth.forgotPassword")}
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-[var(--syn-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Lock className="w-4 h-4 text-[var(--syn-muted)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
@@ -273,7 +251,7 @@ export default function SignInPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--syn-muted)] hover:text-[var(--syn-heading)]"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--syn-muted)] hover:text-[var(--syn-heading)]"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -300,7 +278,7 @@ export default function SignInPage() {
               {/* Divider */}
               <div className="my-6 flex items-center gap-3">
                 <div className="flex-1 h-px bg-[var(--syn-border)]" />
-                <span className="text-[11px] text-[var(--syn-subtle)] uppercase tracking-wider font-mono">
+                <span className="text-xs text-[var(--syn-subtle)] uppercase tracking-wider font-mono">
                   {t("auth.orContinueWith")}
                 </span>
                 <div className="flex-1 h-px bg-[var(--syn-border)]" />
@@ -359,7 +337,7 @@ export default function SignInPage() {
             </div>
 
             {/* Terms Footer */}
-            <div className="mt-8 pt-4 border-t border-[var(--syn-border)] text-center">
+            <div className="mt-6 pt-4 border-t border-[var(--syn-border)] text-center">
               <p className="text-xs text-[var(--syn-subtle)]">
                 {t("footer.rights")} · <Link href="/terms" className="hover:underline">{t("footer.terms")}</Link> · <Link href="/privacy" className="hover:underline">{t("footer.privacy")}</Link>
               </p>
@@ -369,11 +347,11 @@ export default function SignInPage() {
           {/* ═══════════════════════════════════════════════════════════════
               RIGHT COLUMN: FULL QUERYSONAR V2 DASHBOARD INTERACTIVE PREVIEW
               ═══════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-7 bg-[var(--syn-card-subtle)] p-6 sm:p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-7 bg-[var(--syn-card-subtle)] p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden">
             
             {/* Top Interactive App Header with Synetica Navigation Pills */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--syn-border)] flex-wrap gap-2">
+              <div className="flex items-center justify-between pb-3.5 border-b border-[var(--syn-border)] flex-wrap gap-2">
                 {/* 5 Real QuerySonar Navigation Tabs (Overview, Competitors, Sources, Queries, Actions) */}
                 <div className="flex items-center gap-1 bg-[var(--syn-card-inner)] p-1 rounded-full border border-[var(--syn-border)]">
                   {[
@@ -390,7 +368,7 @@ export default function SignInPage() {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                           isCurrent
                             ? "bg-emerald-500 text-neutral-950 font-bold shadow-xs"
                             : "text-[var(--syn-muted)] hover:text-[var(--syn-heading)] hover:bg-[var(--syn-card)]"
@@ -405,18 +383,18 @@ export default function SignInPage() {
 
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[11px] font-mono text-[var(--syn-muted)]">
-                    Interactive Preview
+                  <span className="text-xs font-mono text-[var(--syn-muted)]">
+                    Interactive Live Demo
                   </span>
                 </div>
               </div>
 
-              {/* Mini App Content Area based on Selected Tab */}
-              <div className="space-y-3.5">
+              {/* Mini App Content Area - Consistent Zero-Shift Height */}
+              <div className="min-h-[520px] flex flex-col justify-between">
 
                 {/* ── 1. OVERVIEW TAB PREVIEW (Full V2 Speedometer + Consensus Ladder + Sentiment) ── */}
                 {activeTab === "overview" && (
-                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
                     {/* 4 Bento KPI Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
@@ -464,7 +442,7 @@ export default function SignInPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                       {/* Left: V2 Radial Spoke Speedometer */}
                       <div className="sm:col-span-5 p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--syn-border)]">
                           <span className="text-xs font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
                             <Trophy className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Share of Voice</span>
@@ -481,7 +459,7 @@ export default function SignInPage() {
 
                       {/* Right: Multi-Engine Consensus Equalizer Ladder */}
                       <div className="sm:col-span-7 p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex flex-col justify-between shadow-xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--syn-border)]">
                           <span className="text-xs font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
                             <Bot className="w-3.5 h-3.5 text-indigo-500" />
                             <span>Engine Consensus Matrix</span>
@@ -502,8 +480,8 @@ export default function SignInPage() {
                     </div>
 
                     {/* V2 Sentiment Breakdown Donut Bar */}
-                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-2 shadow-xs">
-                      <div className="flex items-center justify-between text-xs pb-1.5 border-b border-[var(--syn-border)]">
+                    <div className="p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-2 shadow-xs">
+                      <div className="flex items-center justify-between text-xs pb-1 border-b border-[var(--syn-border)]">
                         <span className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
                           <Smile className="w-3.5 h-3.5 text-emerald-500" />
                           <span>AI Sentiment Distribution</span>
@@ -524,8 +502,8 @@ export default function SignInPage() {
 
                 {/* ── 2. COMPETITORS TAB PREVIEW (Displacement Analysis & Head-to-Head) ── */}
                 {activeTab === "competitors" && (
-                  <div className="space-y-3.5 animate-in fade-in duration-200">
-                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-3.5 shadow-xs">
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-3 shadow-xs">
                       <div className="flex items-center justify-between text-xs pb-2 border-b border-[var(--syn-border)]">
                         <span className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-indigo-500" />
@@ -542,9 +520,9 @@ export default function SignInPage() {
                             <div
                               key={idx}
                               onClick={() => setSelectedCompetitorIdx(idx)}
-                              className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                              className={`p-3 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
                                 isSelected
-                                  ? "bg-emerald-500/15 border-emerald-500 shadow-xs"
+                                  ? "bg-emerald-500/15 border-emerald-500 shadow-xs scale-[1.01]"
                                   : comp.isBrand
                                   ? "bg-emerald-500/5 border-emerald-500/20 text-[var(--syn-heading)]"
                                   : "bg-[var(--syn-card-inner)] border-[var(--syn-border)] text-[var(--syn-heading)] hover:border-[var(--syn-border-hover)]"
@@ -586,7 +564,7 @@ export default function SignInPage() {
                       </div>
 
                       {/* Detail Breakdown for Selected Competitor */}
-                      <div className="p-4 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] space-y-2">
+                      <div className="p-3.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-[var(--syn-heading)]">
                             Engine Visibility Breakdown: {competitorsList[selectedCompetitorIdx].name}
@@ -614,7 +592,7 @@ export default function SignInPage() {
 
                 {/* ── 3. SOURCES TAB PREVIEW (Ecosystem Ring + 8 Channel Grid) ── */}
                 {activeTab === "sources" && (
-                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
                     {/* V2 Citation Ecosystem Ring */}
                     <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-xs">
                       <V2CitationEcosystemRing
@@ -627,15 +605,13 @@ export default function SignInPage() {
                       />
                     </div>
 
-                    {/* 8-Channel Grounding Breakdown */}
+                    {/* 4 Grounding Breakdown Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
                         { title: "Reddit & HackerNews", desc: "48 discussions cited across r/developer & r/marketing", icon: MessageSquare, badge: "Live Harvester", color: "text-orange-500" },
                         { title: "Google News & Press", desc: "32 editorial articles cited in latest LLM updates", icon: Newspaper, badge: "Real-Time PR", color: "text-blue-500" },
-                        { title: "Wikipedia & Knowledge Graph", desc: "Entity recognition & verified factual anchoring", icon: BookOpen, badge: "High Authority", color: "text-purple-500" },
                         { title: "Technical GEO & llms.txt", desc: "robots.txt allows GPTBot, ClaudeBot, PerplexityBot", icon: Code2, badge: "200 OK Validated", color: "text-emerald-500" },
-                        { title: "G2 & Capterra Review Hubs", desc: "18 verified software reviews ingested by Perplexity Pro", icon: Star, badge: "Buyer Intent", color: "text-amber-500" },
-                        { title: "YouTube & Video Transcripts", desc: "14 tutorial transcripts parsed by Gemini & SearchGPT", icon: Video, badge: "Multimodal", color: "text-rose-500" },
+                        { title: "G2 Review Hubs", desc: "18 verified software reviews ingested by Perplexity", icon: BookOpen, badge: "Buyer Intent", color: "text-amber-500" },
                       ].map((src, i) => {
                         const Icon = src.icon;
                         return (
@@ -661,7 +637,7 @@ export default function SignInPage() {
 
                 {/* ── 4. QUERIES TAB PREVIEW (4-Persona AI Intent Queries & LLM Transcripts) ── */}
                 {activeTab === "queries" && (
-                  <div className="space-y-3.5 animate-in fade-in duration-200">
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
                     <div className="flex items-center justify-between text-xs font-bold text-[var(--syn-heading)] pb-2 border-b border-[var(--syn-border)]">
                       <span className="flex items-center gap-1.5">
                         <Search className="w-3.5 h-3.5 text-emerald-500" />
@@ -732,30 +708,60 @@ export default function SignInPage() {
                   </div>
                 )}
 
-                {/* ── 5. ACTIONS TAB PREVIEW (Interactive Remediation Battlecards & Playbook) ── */}
+                {/* ── 5. ACTIONS TAB PREVIEW (Matched Height with Interactive Checklist) ── */}
                 {activeTab === "actions" && (
-                  <div className="space-y-3.5 animate-in fade-in duration-200">
-                    {/* V2 Optimization Playbook Component */}
-                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-xs">
-                      <V2OptimizationPlaybookCapsules
-                        actions={[
-                          { id: "1", priority: "high", title: "Deploy standard /llms.txt at root domain", isCompleted: completedActions.includes("llmstxt"), estimatedImpact: "+18% Visibility" },
-                          { id: "2", priority: "high", title: "Verify GPTBot & ClaudeBot in robots.txt", isCompleted: completedActions.includes("robots"), estimatedImpact: "+24% Indexability" },
-                          { id: "3", priority: "high", title: "Publish Comparison Battlecard for Gemini Answers", isCompleted: completedActions.includes("gemini"), estimatedImpact: "+15% Citations" },
-                          { id: "4", priority: "medium", title: "Seed authoritative verified FAQ on Reddit", isCompleted: completedActions.includes("reddit"), estimatedImpact: "+12% Community SOV" },
-                        ]}
-                      />
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    {/* Top Resolution Summary Header Card */}
+                    <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex items-center justify-between gap-4 shadow-xs">
+                      <div className="flex items-center gap-3.5">
+                        {/* Circular Resolution Ring */}
+                        <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                          <svg width="56" height="56" viewBox="0 0 56 56" className="overflow-visible">
+                            <circle cx="28" cy="28" r="22" fill="none" stroke="var(--syn-border)" strokeWidth="5" />
+                            <circle
+                              cx="28"
+                              cy="28"
+                              r="22"
+                              fill="none"
+                              stroke="#10B981"
+                              strokeWidth="5"
+                              strokeDasharray={`${(resolutionRate / 100) * 138.2} 138.2`}
+                              strokeLinecap="round"
+                              transform="rotate(-90 28 28)"
+                              className="transition-all duration-300"
+                            />
+                          </svg>
+                          <span className="absolute font-mono font-extrabold text-sm text-[var(--syn-heading)]">
+                            {resolutionRate}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-sm text-[var(--syn-heading)] block">GEO Remediation Progress</span>
+                          <span className="text-xs text-[var(--syn-muted)] font-mono">{completedActions.length} of 4 Tasks Completed</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <div className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+                          <span className="text-[9px] font-mono text-red-500 uppercase font-bold block">Critical</span>
+                          <span className="text-sm font-mono font-extrabold text-red-500">2 Tasks</span>
+                        </div>
+                        <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                          <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold block">Resolved</span>
+                          <span className="text-sm font-mono font-extrabold text-emerald-500">{completedActions.length} Done</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Interactive Checklist with Clickable Remediation Tasks */}
+                    {/* Interactive 4 Action Battlecards */}
                     <div className="p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] space-y-2.5 shadow-xs">
-                      <div className="flex items-center justify-between text-xs font-bold text-[var(--syn-heading)] pb-2 border-b border-[var(--syn-border)]">
+                      <div className="flex items-center justify-between text-xs font-bold text-[var(--syn-heading)] pb-1.5 border-b border-[var(--syn-border)]">
                         <span className="flex items-center gap-1.5">
                           <Zap className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Tactical GEO Remediation Checklist</span>
+                          <span>Click Any Task to Toggle Remediation</span>
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                          {completedActions.length}/4 Tasks Completed
+                        <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                          {4 - completedActions.length} Tasks in Queue
                         </span>
                       </div>
 
@@ -793,7 +799,7 @@ export default function SignInPage() {
                                 </div>
                               </div>
 
-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                                 {act.impact}
                               </span>
                             </div>
@@ -808,12 +814,12 @@ export default function SignInPage() {
             </div>
 
             {/* Bottom Glow / Multi-Engine Live Probing Bar */}
-            <div className="mt-4 p-3.5 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex items-center justify-between text-xs flex-wrap gap-2 shadow-xs">
+            <div className="mt-4 p-4 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] flex items-center justify-between text-xs flex-wrap gap-2 shadow-xs">
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-[var(--syn-muted)]">Active Engines:</span>
+                <span className="text-xs font-mono text-[var(--syn-muted)]">Active Engines:</span>
                 <AIEngineRow className="flex items-center gap-2" />
               </div>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+              <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live V2 Probes Active
               </span>
@@ -821,11 +827,6 @@ export default function SignInPage() {
 
           </div>
         </div>
-      </div>
-
-      {/* Bottom Legal Footer */}
-      <div className="max-w-[1480px] w-full mx-auto text-center text-xs text-[var(--syn-subtle)] py-2">
-        {t("footer.rights")}
       </div>
     </div>
   );
