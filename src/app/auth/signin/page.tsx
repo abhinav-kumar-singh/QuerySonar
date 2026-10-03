@@ -295,7 +295,7 @@ export default function SignInPage() {
   const resolutionRate = Math.round((completedActions.length / 4) * 100);
 
   return (
-    <div className="v2 synetica-shell w-full flex-1 flex flex-col justify-center items-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-[var(--syn-bg,#08080A)] text-[var(--syn-text,#D4D4D8)]">
+    <div className="v2 synetica-shell w-full flex-1 flex flex-col justify-center items-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-[var(--syn-bg)] text-[var(--syn-text)]">
       {/* Large Expansive Split Screen Card */}
       <div className="max-w-[1480px] w-full mx-auto">
         <div className="rounded-3xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[780px] lg:min-h-[820px]">

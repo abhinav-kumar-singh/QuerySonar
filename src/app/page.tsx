@@ -1204,26 +1204,45 @@ export default function LandingPage() {
           </div>
         </RevealOnScroll>
 
-        <div className="v2-footer-bar">
-          <Link href="/" className="flex items-center gap-2 text-[var(--syn-heading)] font-bold">
-            <div className="w-6 h-6 rounded-full bg-[#86EFAC] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-neutral-950 fill-neutral-950" />
-            </div>
-            QuerySonar
-          </Link>
-          <span className="text-xs text-[var(--syn-muted)]">
-            {t("landing.footerTagline")}
-          </span>
-          <a
-            href="#features"
-            onClick={(e) => {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--syn-heading)] hover:text-emerald-500 cursor-pointer"
-          >
-            {t("landing.backToTop")} <ArrowUpRight size={14} />
-          </a>
+        <div className="v2-footer-bar flex flex-col md:flex-row items-center justify-between gap-6 pt-8 pb-12 border-t border-[var(--syn-border)]">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <Link href="/" className="flex items-center gap-2 text-[var(--syn-heading)] font-bold">
+              <div className="w-6 h-6 rounded-full bg-[#86EFAC] flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-neutral-950 fill-neutral-950" />
+              </div>
+              QuerySonar
+            </Link>
+            <span className="hidden sm:inline text-[var(--syn-subtle)]">·</span>
+            <span className="text-xs text-[var(--syn-muted)]">
+              {t("landing.footerTagline")}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-6 text-xs text-[var(--syn-muted)] flex-wrap justify-center">
+            <Link href="/privacy" className="hover:text-[var(--syn-heading)] transition-colors">
+              {t("footer.privacy") || "Privacy"}
+            </Link>
+            <Link href="/terms" className="hover:text-[var(--syn-heading)] transition-colors">
+              {t("footer.terms") || "Terms"}
+            </Link>
+            <Link href="/auth/signin" className="hover:text-[var(--syn-heading)] transition-colors">
+              {t("common.signIn")}
+            </Link>
+            <span className="text-[var(--syn-subtle)] hidden sm:inline">|</span>
+            <a
+              href="#features"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="inline-flex items-center gap-1 font-semibold text-[var(--syn-heading)] hover:text-emerald-500 transition-colors cursor-pointer"
+            >
+              {t("landing.backToTop")} <ArrowUpRight size={14} />
+            </a>
+          </div>
+        </div>
+        <div className="text-center pb-8 text-[11px] text-[var(--syn-subtle)]">
+          {t("footer.rights")}
         </div>
       </footer>
     </div>
