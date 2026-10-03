@@ -57,11 +57,15 @@ export function GeoCopilot({ audit, className = "" }: GeoCopilotProps) {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll on new messages
+  // Auto-scroll only the internal chat box container when new messages arrive (never scroll the main window)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatMessages.length > 1 || isLoading) {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }
   }, [chatMessages, isLoading]);
 
   // Dynamic quick-prompt chips based on live audit data
@@ -327,7 +331,7 @@ export function GeoCopilot({ audit, className = "" }: GeoCopilotProps) {
       </div>
 
       {/* ── Message Thread ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-3 py-3 pr-1 text-xs">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto min-h-0 space-y-3 py-3 pr-1 text-xs">
         {chatMessages.map((msg) => (
           <div
             key={msg.id}
@@ -396,8 +400,6 @@ export function GeoCopilot({ audit, className = "" }: GeoCopilotProps) {
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* ── Suggested Prompt Chips ─────────────────────────────────── */}

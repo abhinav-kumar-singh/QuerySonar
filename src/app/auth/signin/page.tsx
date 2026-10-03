@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sparkles,
   LayoutDashboard,
@@ -39,9 +39,10 @@ import {
   V2CitationEcosystemRing,
 } from "@/app/dashboard/components/dashboard-v2-charts";
 
-export default function SignInPage() {
+function SignInPageContent() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Step: "email" | "otp"
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -53,8 +54,18 @@ export default function SignInPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
 
+  // Catch OAuth redirect errors if any
+  useEffect(() => {
+    const error = searchParams?.get("error");
+    if (error === "OAuthAccountNotLinked") {
+      setAuthError("This email was previously used with another sign-in method. Account linking has been configured — please sign in with Google again.");
+    } else if (error) {
+      setAuthError(`Authentication error: ${error}`);
+    }
+  }, [searchParams]);
+
   // Cooldown countdown timer for resending OTP
-  React.useEffect(() => {
+  useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
       setCooldown((prev) => prev - 1);
@@ -1022,5 +1033,22 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="v2 synetica-shell min-h-screen flex items-center justify-center bg-[var(--syn-bg)] text-[var(--syn-muted)]">
+          <div className="flex items-center gap-2 font-mono text-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <SignInPageContent />
+    </Suspense>
   );
 }
