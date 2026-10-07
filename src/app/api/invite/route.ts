@@ -81,8 +81,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = session?.user?.id || null;
-    const userName = session?.user?.name || member.name;
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Please sign in to your account before accepting this invitation." },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.email && session.user.email.toLowerCase() !== member.email.toLowerCase()) {
+      return NextResponse.json(
+        {
+          error: `This invitation was issued to ${member.email}. You are currently signed in as ${session.user.email}. Please switch to ${member.email} to accept this invitation.`,
+        },
+        { status: 403 }
+      );
+    }
+
+    const userId = session.user.id;
+    const userName = session.user.name || member.name;
 
     // Accept invitation and mark member as ACTIVE
     const updated = await prisma.workspaceMember.update({

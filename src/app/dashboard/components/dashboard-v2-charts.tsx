@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 import {
   Trophy,
   Smile,
@@ -28,8 +29,9 @@ export function V2RadialSpokeSpeedometer({
   value = 100,
   max = 100,
   size = 240,
-  spokeCount = 18,
-  subtitle = "Average Score",
+  spokeCount,
+  subtitle,
+  brandName,
 }: {
   value?: number;
   max?: number;
@@ -38,108 +40,73 @@ export function V2RadialSpokeSpeedometer({
   subtitle?: string;
   brandName?: string;
 }) {
-  const [hoveredSpoke, setHoveredSpoke] = useState<number | null>(null);
   const clampedValue = Math.min(Math.max(value, 0), max);
-  const activeSpokes = Math.round((clampedValue / max) * spokeCount);
+  const pct = clampedValue / max;
 
-  // SVG viewBox geometry: width = 240, height = 135
-  const vbWidth = 240;
-  const vbHeight = 135;
-  const centerX = vbWidth / 2; // 120
-  const centerY = 120; // baseline of the 180° arch
-  const innerRadius = 70; // large spacious inner hole
-  const outerRadius = 105; // spoke length 35px
-
-  // Distribute 18 sectors evenly across [180°, 0°]
-  const sectorStep = 180 / spokeCount; // 10° per spoke
-
-  const spokes = Array.from({ length: spokeCount }).map((_, i) => {
-    // Spoke center angle: for i=0 -> 175° (slot [180°, 170°]), for i=17 -> 5° (slot [10°, 0°])
-    const angleDeg = 180 - (i + 0.5) * sectorStep;
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const isActive = i < activeSpokes;
-    const isHovered = hoveredSpoke === i;
-
-    const x1 = centerX + (innerRadius + 4) * Math.cos(angleRad);
-    const y1 = centerY - (innerRadius + 4) * Math.sin(angleRad);
-    const x2 = centerX + (outerRadius - 4) * Math.cos(angleRad);
-    const y2 = centerY - (outerRadius - 4) * Math.sin(angleRad);
-
-    const spokeScore = Math.round(((i + 1) / spokeCount) * 100);
-
-    return {
-      index: i,
-      x1,
-      y1,
-      x2,
-      y2,
-      isActive,
-      isHovered,
-      spokeScore,
-    };
-  });
+  // 180° semi-circle arc geometry matching Image 2
+  const radius = 82;
+  const totalLength = Math.PI * radius; // ~257.61
+  const strokeDashoffset = totalLength * (1 - pct);
+  const formattedValue = value % 1 === 0 ? Math.round(value) : value.toFixed(1);
 
   return (
     <div className="relative flex flex-col items-center justify-center select-none w-full py-1">
       <svg
         width="100%"
         height="100%"
-        viewBox={`0 0 ${vbWidth} ${vbHeight}`}
+        viewBox="0 0 240 140"
         className="overflow-visible max-w-[240px]"
+        role="img"
+        aria-label={`Share of Voice: ${formattedValue}%`}
       >
-        <defs>
-          <linearGradient id="v2EmeraldArchGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#4ADE80" />
-            <stop offset="50%" stopColor="#22C55E" />
-            <stop offset="100%" stopColor="#10B981" />
-          </linearGradient>
-        </defs>
+        {/* Background Track (Dark forest teal arc from Image 2) */}
+        <path
+          d="M 38 118 A 82 82 0 0 1 202 118"
+          fill="none"
+          stroke="#0B3F38"
+          strokeWidth={25}
+          strokeLinecap="round"
+          className="transition-colors duration-300 dark:stroke-[#082E29]"
+        />
 
-        {/* 18 Chunky Rounded Spokes along the 180° Arch */}
-        {spokes.map((spoke) => (
-          <line
-            key={spoke.index}
-            x1={spoke.x1}
-            y1={spoke.y1}
-            x2={spoke.x2}
-            y2={spoke.y2}
-            stroke={
-              spoke.isActive
-                ? spoke.isHovered
-                  ? "#86EFAC"
-                  : "url(#v2EmeraldArchGrad)"
-                : "var(--syn-border, rgba(255, 255, 255, 0.14))"
-            }
-            strokeWidth={9.5}
-            strokeLinecap="round"
-            opacity={spoke.isActive ? 1 : 0.35}
-            className="transition-colors duration-150 cursor-pointer"
-            onMouseEnter={() => setHoveredSpoke(spoke.index)}
-            onMouseLeave={() => setHoveredSpoke(null)}
-          />
-        ))}
+        {/* Filled Progress Arc (Vibrant green with smooth rounded cap) */}
+        <path
+          d="M 38 118 A 82 82 0 0 1 202 118"
+          fill="none"
+          stroke="#22C55E"
+          strokeWidth={25}
+          strokeLinecap="round"
+          strokeDasharray={totalLength}
+          strokeDashoffset={strokeDashoffset}
+          style={{
+            transition: "stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1)",
+            opacity: clampedValue > 0 ? 1 : 0,
+          }}
+        />
 
-        {/* Centered Large Metric inside SVG with Ample Clearance */}
+        {/* Centered Large Metric inside the Arc (Matching Image 2) */}
         <text
-          x={centerX}
-          y={92}
+          x={120}
+          y={subtitle ? 104 : 110}
           textAnchor="middle"
-          className="font-mono font-extrabold fill-[var(--syn-heading)]"
-          style={{ fontSize: "32px", letterSpacing: "-0.03em" }}
+          className="font-bold fill-[var(--syn-heading)]"
+          style={{ fontSize: "36px", letterSpacing: "-0.03em" }}
         >
-          {value % 1 === 0 ? Math.round(value) : value.toFixed(1)}%
+          {formattedValue}%
         </text>
 
-        {/* Centered Subtitle inside SVG */}
-        <text
-          x={centerX}
-          y={112}
-          textAnchor="middle"
-          className="font-sans font-medium fill-[var(--syn-muted)]"
-          style={{ fontSize: "11px" }}
-        >
-          {subtitle}
-        </text>
+        {/* Optional Subtitle if provided */}
+        {subtitle && (
+          <text
+            x={120}
+            y={124}
+            textAnchor="middle"
+            className="font-sans font-medium fill-[var(--syn-muted)]"
+            style={{ fontSize: "11px" }}
+          >
+            {subtitle}
+          </text>
+        )}
       </svg>
     </div>
   );
@@ -294,6 +261,7 @@ export function V2TricolorCapsulePill({
   neutralCount?: number;
   negativeCount?: number;
 }) {
+  const { t } = useLanguage();
   const [hoveredSegment, setHoveredSegment] = useState<"pos" | "neu" | "neg" | null>(null);
 
   const totalProbes = positiveCount + neutralCount + negativeCount || 1;
@@ -301,7 +269,7 @@ export function V2TricolorCapsulePill({
   const categories = [
     {
       key: "pos" as const,
-      name: "Positive",
+      name: t("dashboard.sentimentPositive"),
       pct: positivePct,
       count: positiveCount,
       color: "#10B981", // Green
@@ -312,7 +280,7 @@ export function V2TricolorCapsulePill({
     },
     {
       key: "neu" as const,
-      name: "Neutral",
+      name: t("dashboard.sentimentNeutral"),
       pct: neutralPct,
       count: neutralCount,
       color: "#8B5CF6", // Purple / Indigo
@@ -323,7 +291,7 @@ export function V2TricolorCapsulePill({
     },
     {
       key: "neg" as const,
-      name: "Negative",
+      name: t("dashboard.sentimentNegative"),
       pct: negativePct,
       count: negativeCount,
       color: "#F97316", // Orange
@@ -334,116 +302,20 @@ export function V2TricolorCapsulePill({
     },
   ];
 
-  // SVG parameters - Spacious sleek Donut ring
-  const vbSize = 136;
-  const cx = 68;
-  const cy = 68;
-  const radius = 50;
-  const strokeWidth = 11;
-  const circumference = 2 * Math.PI * radius; // ~314.16px
-  const gapLength = 10; // Visible rounded gap between slices
-
-  // Calculate arc slices for non-zero percentages
-  let accumulatedAngle = -90; // Start at top 12 o'clock
-  let accumulatedDash = 0;
-
-  const slices = categories.map((cat) => {
-    const slicePct = cat.pct / 100;
-    const sliceAngle = slicePct * 360;
-    const midAngle = accumulatedAngle + sliceAngle / 2;
-    accumulatedAngle += sliceAngle;
-
-    const rawDash = slicePct * circumference;
-    const dashLength = cat.pct > 0 ? Math.max(8, rawDash - gapLength) : 0;
-    const dashOffset = -accumulatedDash;
-    if (cat.pct > 0) accumulatedDash += rawDash;
-
-    return {
-      ...cat,
-      dashLength,
-      dashOffset,
-      midAngle,
-      visible: cat.pct > 0,
-    };
-  });
-
   const posCat = categories[0];
   const neuCat = categories[1];
   const negCat = categories[2];
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 w-full select-none py-1.5">
-      {/* LEFT: Spacious Donut SVG */}
-      <div className="relative shrink-0 w-[130px] h-[130px] flex items-center justify-center">
-        <svg
-          width="130"
-          height="130"
-          viewBox={`0 0 ${vbSize} ${vbSize}`}
-          className="overflow-visible"
-        >
-          <defs>
-            <filter id="v2DonutGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="2.5" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Background Track Circle */}
-          <circle
-            cx={cx}
-            cy={cy}
-            r={radius}
-            fill="none"
-            stroke="var(--syn-border, rgba(255, 255, 255, 0.08))"
-            strokeWidth={strokeWidth}
-          />
-
-          {/* Colored Arc Segments */}
-          {slices.map((slice) => {
-            if (!slice.visible) return null;
-            const isHovered = hoveredSegment === slice.key;
-
-            return (
-              <circle
-                key={slice.key}
-                cx={cx}
-                cy={cy}
-                r={radius}
-                fill="none"
-                stroke={slice.color}
-                strokeWidth={isHovered ? strokeWidth + 3 : strokeWidth}
-                strokeDasharray={`${slice.dashLength} ${circumference - slice.dashLength}`}
-                strokeDashoffset={slice.dashOffset}
-                strokeLinecap="round"
-                transform={`rotate(-90 ${cx} ${cy})`}
-                filter={isHovered ? "url(#v2DonutGlow)" : undefined}
-                className="transition-all duration-200 cursor-pointer"
-                onMouseEnter={() => setHoveredSegment(slice.key)}
-                onMouseLeave={() => setHoveredSegment(null)}
-              />
-            );
-          })}
-
-          {/* Center Metric */}
-          <text
-            x={cx}
-            y={cy + 3}
-            textAnchor="middle"
-            className="font-mono font-extrabold fill-[var(--syn-heading)]"
-            style={{ fontSize: "24px", letterSpacing: "-0.03em" }}
-          >
-            {positivePct >= 50 ? `+${positivePct}%` : `${positivePct}%`}
-          </text>
-          <text
-            x={cx}
-            y={cy + 18}
-            textAnchor="middle"
-            className="font-sans font-semibold fill-[var(--syn-muted)]"
-            style={{ fontSize: "9px" }}
-          >
-            Sentiment
-          </text>
-        </svg>
+      {/* LEFT: Big Percent Number (replaces circular graph, matching V1) */}
+      <div className="shrink-0 flex flex-col items-center justify-center px-3 sm:px-5 py-2 min-w-[120px]">
+        <span className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--syn-heading)] font-mono leading-none">
+          {positivePct}%
+        </span>
+        <span className="text-xs font-semibold text-[var(--syn-muted)] mt-1.5 whitespace-nowrap">
+          {t("dashboard.positiveTone")}
+        </span>
       </div>
 
       {/* RIGHT: Masonry Grid Layout of Metric Numbers */}

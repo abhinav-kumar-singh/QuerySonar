@@ -27,6 +27,9 @@ export interface CategoryDiscoveryResult {
   summary: string;
   categories: BusinessCategoryItem[];
   detectedCompetitors: string[];
+  detectedMarket?: string;
+  aliases?: string[];
+  faviconUrl?: string;
 }
 
 export interface CategoryGroundedQuery {
@@ -50,6 +53,67 @@ export interface GeneratedBrandIntel {
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 const GENERATION_TIMEOUT_MS = 10_000;
 
+export interface WebsiteMetadata {
+  title?: string;
+  description?: string;
+  siteName?: string;
+  favicon?: string;
+}
+
+export async function fetchWebsiteMetadata(url: string): Promise<WebsiteMetadata | null> {
+  try {
+    let clean = url.trim();
+    if (!clean) return null;
+    if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+      clean = `https://${clean}`;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(clean, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].replace(/[\r\n\t]+/g, " ").trim() : undefined;
+
+    const descMatch = html.match(/<meta[^>]+(?:name|property)=["'](?:description|og:description|twitter:description)["'][^>]+content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:description|og:description|twitter:description)["']/i);
+    const description = descMatch ? descMatch[1].replace(/[\r\n\t]+/g, " ").trim() : undefined;
+
+    const siteMatch = html.match(/<meta[^>]+(?:name|property)=["'](?:og:site_name|application-name)["'][^>]+content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:og:site_name|application-name)["']/i);
+    const siteName = siteMatch ? siteMatch[1].replace(/[\r\n\t]+/g, " ").trim() : undefined;
+
+    const favMatch = html.match(/<link[^>]+rel=["'](?:shortcut icon|icon)["'][^>]+href=["']([^"']+)["']/i);
+    let favicon = favMatch ? favMatch[1].trim() : undefined;
+    if (favicon && !favicon.startsWith("http")) {
+      try {
+        favicon = new URL(favicon, clean).toString();
+      } catch {}
+    }
+    if (!favicon) {
+      try {
+        const u = new URL(clean);
+        favicon = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`;
+      } catch {}
+    }
+
+    return { title, description, siteName, favicon };
+  } catch {
+    return null;
+  }
+}
+
 /* ───────────────────────────────────────────────────────────────────────────
    1. DISCOVER BRAND CATEGORIES (Image 1 Taxonomy Step)
    ─────────────────────────────────────────────────────────────────────────── */
@@ -63,10 +127,16 @@ export async function discoverBrandCategories(
   const cleanUrl = websiteUrl ? websiteUrl.trim() : "";
   const apiKey = (process.env.GEMINI_API_KEY || "").replace(/^["'\s]+|["'\s]+$/g, "");
 
+  // Live homepage scraping to ground brand taxonomy and avoid domain misidentification
+  const metadata = cleanUrl ? await fetchWebsiteMetadata(cleanUrl) : null;
+  const canonicalBrandHint = (metadata?.siteName && metadata.siteName.trim())
+    ? metadata.siteName.trim()
+    : cleanBrand;
+
   // 1. Try Requesty AI Gateway first (Free 200 requests/day tier)
   if (getCleanRequestyKey()) {
     try {
-      const res = await callRequestyForCategoryDiscovery(cleanBrand, cleanUrl, categoryHint, targetLocation);
+      const res = await callRequestyForCategoryDiscovery(canonicalBrandHint, cleanUrl, categoryHint, targetLocation, metadata);
       if (res && res.categories.length > 0) {
         return res;
       }
@@ -78,7 +148,7 @@ export async function discoverBrandCategories(
   // 2. Try Gemini (if valid API key starting with AIza)
   if (apiKey && apiKey.startsWith("AIza")) {
     try {
-      const res = await callGeminiForCategoryDiscovery(cleanBrand, cleanUrl, categoryHint, apiKey, targetLocation);
+      const res = await callGeminiForCategoryDiscovery(canonicalBrandHint, cleanUrl, categoryHint, apiKey, targetLocation, metadata);
       if (res && res.categories.length > 0) {
         return res;
       }
@@ -91,7 +161,7 @@ export async function discoverBrandCategories(
   const openRouterKey = (process.env.OPENROUTER_API_KEY || "").replace(/^["'\s]+|["'\s]+$/g, "");
   if (openRouterKey) {
     try {
-      const res = await callOpenRouterForCategoryDiscovery(cleanBrand, cleanUrl, categoryHint, targetLocation);
+      const res = await callOpenRouterForCategoryDiscovery(canonicalBrandHint, cleanUrl, categoryHint, targetLocation, metadata);
       if (res && res.categories.length > 0) {
         return res;
       }
@@ -101,7 +171,7 @@ export async function discoverBrandCategories(
   }
 
   // 4. Dynamic Multi-Industry Semantic Synthesis
-  return generateDynamicCategoryDiscovery(cleanBrand, cleanUrl, categoryHint);
+  return generateDynamicCategoryDiscovery(canonicalBrandHint, cleanUrl, categoryHint, metadata);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -217,16 +287,24 @@ async function callGeminiForCategoryDiscovery(
   websiteUrl: string,
   categoryHint: string | undefined,
   apiKey: string,
-  targetLocation?: string
+  targetLocation?: string,
+  metadata?: WebsiteMetadata | null
 ): Promise<CategoryDiscoveryResult | null> {
   const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   const systemInstruction = `You are an expert market taxonomist and GEO strategist.
-Analyze the target brand, domain, and website URL to identify the exact market vertical, industry, and full product/service offerings.
+Analyze the target brand, domain, and live website metadata to identify the exact canonical brand name, market vertical, industry, and full product/service offerings.
+CRITICAL INSTRUCTION ON DOMAIN NAMES: Many popular brands use domains containing common English words (for example, 'boat-lifestyle.com' is the official website of 'boAt' / 'boAt Lifestyle', the prominent Indian consumer electronics & wireless audio brand, NOT marine boats). Always identify the true real-world brand and products grounded in the website metadata.
+
 Generate 10 to 14 rich, granular, distinct, and industry-standard Business Categories that comprehensively describe what this business provides across its full catalog and capabilities (e.g. core categories, specialized product lines, customer segments, use cases, delivery models).
 Auto-select the top 4-6 most relevant categories (isAutoSelected: true), and set the remaining categories to isAutoSelected: false so the user has a wide selection to choose from.
-Also provide a 1-2 sentence brand summary and 4-6 real market competitors in that exact industry.${
+Also provide:
+- "brandName": The canonical, correctly capitalized brand name (e.g. "boAt", "Boat Lifestyle", "Apple", "Notion").
+- "summary": A 1-2 sentence accurate summary of what the brand actually does.
+- "detectedMarket": The primary target market and language (e.g. "India · English", "United States · English", "Global · English").
+- "aliases": 3-5 alternative brand names, common search variants, or parent company names (e.g. ["boAt", "boAt Lifestyle", "boAt India", "boat-lifestyle.com", "Imagine Marketing Limited"]).
+- "detectedCompetitors": 4-6 real market competitors in that exact industry.${
     targetLocation
       ? `\nTarget Market / Location Focus: "${targetLocation}". Tailor business categories and market competitors for the ${targetLocation} market.`
       : ""
@@ -234,7 +312,10 @@ Also provide a 1-2 sentence brand summary and 4-6 real market competitors in tha
 
 Respond STRICTLY with valid JSON conforming to:
 {
+  "brandName": "Canonical Brand Name",
   "summary": "1-2 sentence accurate summary of what the brand actually does",
+  "detectedMarket": "Country · Language",
+  "aliases": ["Alias 1", "Alias 2", "Alias 3", "Parent Company"],
   "detectedCompetitors": ["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4"],
   "categories": [
     { "id": "cat-1", "name": "Primary Category Name", "isAutoSelected": true },
@@ -254,9 +335,10 @@ Respond STRICTLY with valid JSON conforming to:
 
   const userPrompt = `Brand Name: "${brandName}"
 Website URL: "${websiteUrl || "N/A"}"
-${targetLocation ? `Target Location / Market: "${targetLocation}"` : ""}
-${categoryHint ? `User Category Hint: "${categoryHint}"` : ""}
-
+${targetLocation ? `Target Location / Market: "${targetLocation}"\n` : ""}${categoryHint ? `User Category Hint: "${categoryHint}"\n` : ""}${metadata ? `Live Website Scraped Metadata:
+- Page Title: "${metadata.title || "N/A"}"
+- Meta Description: "${metadata.description || "N/A"}"
+- Site Name: "${metadata.siteName || "N/A"}"\n` : ""}
 Generate the 10-14 business categories taxonomy and brand intel JSON now.`;
 
   const controller = new AbortController();
@@ -286,7 +368,7 @@ Generate the 10-14 business categories taxonomy and brand intel JSON now.`;
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) return null;
 
-    return parseCategoryDiscoveryJson(rawText, brandName, websiteUrl);
+    return parseCategoryDiscoveryJson(rawText, brandName, websiteUrl, targetLocation, metadata);
   } finally {
     clearTimeout(timeout);
   }
@@ -374,18 +456,29 @@ async function callOpenRouterForCategoryDiscovery(
   brandName: string,
   websiteUrl: string,
   categoryHint?: string,
-  targetLocation?: string
+  targetLocation?: string,
+  metadata?: WebsiteMetadata | null
 ): Promise<CategoryDiscoveryResult | null> {
   const systemPrompt = `You are an expert market taxonomist and GEO strategist.
-Analyze the target brand, domain, and website URL to identify the exact market vertical, industry, and full product/service offerings.
+Analyze the target brand, domain, and live website metadata to identify the exact canonical brand name, market vertical, industry, and full product/service offerings.
+CRITICAL INSTRUCTION ON DOMAIN NAMES: Many popular brands use domains containing common English words (for example, 'boat-lifestyle.com' is the official website of 'boAt' / 'boAt Lifestyle', the prominent Indian consumer electronics & wireless audio brand, NOT marine boats). Always identify the true real-world brand and products grounded in the website metadata.
+
 Generate 10 to 14 rich, granular, distinct, and industry-standard Business Categories that comprehensively describe what this business provides across its full catalog and capabilities (e.g. core categories, specialized product lines, customer segments, use cases, delivery models).
 ${targetLocation ? `Target market / location focus: "${targetLocation}". Ground categories and competitors for this geography.` : ""}
 Auto-select the top 4-6 most relevant categories (isAutoSelected: true), and set the remaining categories to isAutoSelected: false so the user can choose from up to 8 selections.
-Also provide a 1-2 sentence accurate brand summary, and 4-6 real market competitors in that vertical.
+Also provide:
+- "brandName": The canonical, correctly capitalized brand name (e.g. "boAt", "Boat Lifestyle", "Apple", "Notion").
+- "summary": A 1-2 sentence accurate summary of what the brand actually does.
+- "detectedMarket": The primary target market and language (e.g. "India · English", "United States · English", "Global · English").
+- "aliases": 3-5 alternative brand names, common search variants, or parent company names (e.g. ["boAt", "boAt Lifestyle", "boAt India", "boat-lifestyle.com", "Imagine Marketing Limited"]).
+- "detectedCompetitors": 4-6 real market competitors in that exact industry.
 
 Respond STRICTLY with valid JSON conforming to:
 {
+  "brandName": "Canonical Brand Name",
   "summary": "1-2 sentence accurate summary of what the brand actually does",
+  "detectedMarket": "Country · Language",
+  "aliases": ["Alias 1", "Alias 2", "Alias 3", "Parent Company"],
   "detectedCompetitors": ["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4"],
   "categories": [
     { "id": "cat-1", "name": "Primary Category Name", "isAutoSelected": true },
@@ -403,7 +496,11 @@ Respond STRICTLY with valid JSON conforming to:
   ]
 }`;
 
-  const userPrompt = `Brand: "${brandName}", URL: "${websiteUrl || "N/A"}" ${targetLocation ? `Location: "${targetLocation}"` : ""} ${categoryHint ? `Hint: ${categoryHint}` : ""}`;
+  const userPrompt = `Brand: "${brandName}", URL: "${websiteUrl || "N/A"}" ${targetLocation ? `Location: "${targetLocation}"` : ""} ${categoryHint ? `Hint: ${categoryHint}` : ""}${
+    metadata
+      ? `\nScraped Website Info:\n- Title: "${metadata.title || ""}"\n- Description: "${metadata.description || ""}"\n- Site Name: "${metadata.siteName || ""}"`
+      : ""
+  }`;
 
   const candidateModels = [
     "openai/gpt-4o-mini",
@@ -422,7 +519,7 @@ Respond STRICTLY with valid JSON conforming to:
       });
 
       if (res && res.content) {
-        const parsed = parseCategoryDiscoveryJson(res.content, brandName, websiteUrl);
+        const parsed = parseCategoryDiscoveryJson(res.content, brandName, websiteUrl, targetLocation, metadata);
         if (parsed && parsed.categories.length > 0) {
           console.log(`[QuerySonar] Discovered categories for "${brandName}" via OpenRouter (${m}):`, parsed.categories.map(c => c.name));
           return parsed;
@@ -489,18 +586,29 @@ async function callRequestyForCategoryDiscovery(
   brandName: string,
   websiteUrl: string,
   categoryHint?: string,
-  targetLocation?: string
+  targetLocation?: string,
+  metadata?: WebsiteMetadata | null
 ): Promise<CategoryDiscoveryResult | null> {
   const systemPrompt = `You are an expert market taxonomist and GEO strategist.
-Analyze the target brand, domain, and website URL to identify the exact market vertical, industry, and full product/service offerings.
+Analyze the target brand, domain, and live website metadata to identify the exact canonical brand name, market vertical, industry, and full product/service offerings.
+CRITICAL INSTRUCTION ON DOMAIN NAMES: Many popular brands use domains containing common English words (for example, 'boat-lifestyle.com' is the official website of 'boAt' / 'boAt Lifestyle', the prominent Indian consumer electronics & wireless audio brand, NOT marine boats). Always identify the true real-world brand and products grounded in the website metadata.
+
 Generate 10 to 14 rich, granular, distinct, and industry-standard Business Categories that comprehensively describe what this business provides across its full catalog and capabilities (e.g. core categories, specialized product lines, customer segments, use cases, delivery models).
 ${targetLocation ? `Target market / location focus: "${targetLocation}". Ground categories and competitors for this geography.` : ""}
 Auto-select the top 4-6 most relevant categories (isAutoSelected: true), and set the remaining categories to isAutoSelected: false so the user can choose from up to 8 selections.
-Also provide a 1-2 sentence accurate brand summary, and 4-6 real market competitors in that vertical.
+Also provide:
+- "brandName": The canonical, correctly capitalized brand name (e.g. "boAt", "Boat Lifestyle", "Apple", "Notion").
+- "summary": A 1-2 sentence accurate summary of what the brand actually does.
+- "detectedMarket": The primary target market and language (e.g. "India · English", "United States · English", "Global · English").
+- "aliases": 3-5 alternative brand names, common search variants, or parent company names (e.g. ["boAt", "boAt Lifestyle", "boAt India", "boat-lifestyle.com", "Imagine Marketing Limited"]).
+- "detectedCompetitors": 4-6 real market competitors in that exact industry.
 
 Respond STRICTLY with valid JSON conforming to:
 {
+  "brandName": "Canonical Brand Name",
   "summary": "1-2 sentence accurate summary of what the brand actually does",
+  "detectedMarket": "Country · Language",
+  "aliases": ["Alias 1", "Alias 2", "Alias 3", "Parent Company"],
   "detectedCompetitors": ["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4"],
   "categories": [
     { "id": "cat-1", "name": "Primary Category Name", "isAutoSelected": true },
@@ -518,7 +626,11 @@ Respond STRICTLY with valid JSON conforming to:
   ]
 }`;
 
-  const userPrompt = `Brand: "${brandName}", URL: "${websiteUrl || "N/A"}" ${targetLocation ? `Location: "${targetLocation}"` : ""} ${categoryHint ? `Hint: ${categoryHint}` : ""}`;
+  const userPrompt = `Brand: "${brandName}", URL: "${websiteUrl || "N/A"}" ${targetLocation ? `Location: "${targetLocation}"` : ""} ${categoryHint ? `Hint: ${categoryHint}` : ""}${
+    metadata
+      ? `\nScraped Website Info:\n- Title: "${metadata.title || ""}"\n- Description: "${metadata.description || ""}"\n- Site Name: "${metadata.siteName || ""}"`
+      : ""
+  }`;
 
   const candidateModels = [
     "mistral/leanstral-1-5",
@@ -537,7 +649,7 @@ Respond STRICTLY with valid JSON conforming to:
       });
 
       if (res && res.content) {
-        const parsed = parseCategoryDiscoveryJson(res.content, brandName, websiteUrl);
+        const parsed = parseCategoryDiscoveryJson(res.content, brandName, websiteUrl, targetLocation, metadata);
         if (parsed && parsed.categories.length > 0) {
           console.log(`[QuerySonar] Discovered categories for "${brandName}" via Requesty (${m}):`, parsed.categories.map(c => c.name));
           return parsed;
@@ -607,7 +719,9 @@ async function callRequestyForCategoryPrompts(
 function parseCategoryDiscoveryJson(
   rawText: string,
   brandName: string,
-  websiteUrl?: string
+  websiteUrl?: string,
+  targetLocation?: string,
+  metadata?: WebsiteMetadata | null
 ): CategoryDiscoveryResult | null {
   try {
     const cleanJson = rawText
@@ -652,14 +766,37 @@ function parseCategoryDiscoveryJson(
       categories.slice(0, 4).forEach((c) => (c.isAutoSelected = true));
     }
 
+    const canonicalBrand = (typeof parsed.brandName === "string" && parsed.brandName.trim())
+      ? parsed.brandName.trim()
+      : brandName;
+
+    const detectedMarket = (typeof parsed.detectedMarket === "string" && parsed.detectedMarket.trim())
+      ? parsed.detectedMarket.trim()
+      : (targetLocation ? `${targetLocation} · English` : "Global · English");
+
+    const aliases = Array.isArray(parsed.aliases) && parsed.aliases.length > 0
+      ? (parsed.aliases as unknown[]).filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+      : [canonicalBrand];
+
+    let faviconUrl = metadata?.favicon;
+    if (!faviconUrl && websiteUrl) {
+      try {
+        const u = new URL(websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`);
+        faviconUrl = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`;
+      } catch {}
+    }
+
     return {
-      brandName,
+      brandName: canonicalBrand,
       websiteUrl,
-      summary: parsed.summary || `${brandName} product ecosystem and market solutions.`,
+      summary: parsed.summary || `${canonicalBrand} product ecosystem and market solutions.`,
       detectedCompetitors: Array.isArray(parsed.detectedCompetitors)
         ? (parsed.detectedCompetitors as unknown[]).filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
         : [],
       categories,
+      detectedMarket,
+      aliases,
+      faviconUrl,
     };
   } catch {
     return null;
@@ -723,11 +860,13 @@ function formatBrandTitle(name: string): string {
 export function generateDynamicCategoryDiscovery(
   brandName: string,
   websiteUrl?: string,
-  categoryHint?: string
+  categoryHint?: string,
+  metadata?: WebsiteMetadata | null
 ): CategoryDiscoveryResult {
   const brandTitle = formatBrandTitle(brandName);
   const domainTokens = extractDomainKeywords(websiteUrl);
-  const combined = `${brandName.toLowerCase()} ${domainTokens.join(" ")} ${(websiteUrl || "").toLowerCase()} ${(categoryHint || "").toLowerCase()}`;
+  const metaText = metadata ? `${metadata.title || ""} ${metadata.description || ""} ${metadata.siteName || ""}`.toLowerCase() : "";
+  const combined = `${brandName.toLowerCase()} ${domainTokens.join(" ")} ${(websiteUrl || "").toLowerCase()} ${(categoryHint || "").toLowerCase()} ${metaText}`;
 
   // 1. SMARTPHONES, MOBILE DEVICES & TELECOM HARDWARE
   if (/lava|mobile|phone|smartphone|handset|android|xiaomi|redmi|oppo|vivo|realme|motorola|oneplus|nokia|samsung|pixel|cellular|5g phone/i.test(combined)) {
@@ -749,20 +888,35 @@ export function generateDynamicCategoryDiscovery(
     };
   }
 
-  // 2. CONSUMER ELECTRONICS, AUDIO, COMPUTING & GADGETS
-  if (/electronic|audio|headphone|earbud|speaker|soundbar|laptop|tablet|camera|display|monitor|gadget|smart home|appliance|boat|sony|bose|logitech|asus|acer|lenovo/i.test(combined)) {
+  // 2. CONSUMER ELECTRONICS, AUDIO, COMPUTING & GADGETS (e.g. boAt Lifestyle, Sony, JBL, Noise)
+  if (/electronic|audio|headphone|earbud|speaker|soundbar|laptop|tablet|camera|display|monitor|gadget|smart home|appliance|boat|sony|bose|logitech|asus|acer|lenovo|tws|neckband|smartwatch/i.test(combined)) {
+    const isBoat = /boat/i.test(combined);
+    const cleanBrand = isBoat ? "boAt" : brandName;
     return {
-      brandName,
+      brandName: cleanBrand,
       websiteUrl,
-      summary: `${brandTitle} provides consumer electronics, smart audio gear, and personal computing hardware.`,
-      detectedCompetitors: ["Sony", "boAt", "Logitech", "JBL", "Noise"],
+      summary: isBoat
+        ? "boAt is an Indian consumer-lifestyle electronics brand operated by Imagine Marketing Limited, specializing in wireless earbuds, headphones, smartwatches, and audio products."
+        : `${brandTitle} provides consumer electronics, smart audio gear, and personal computing hardware.`,
+      detectedCompetitors: isBoat
+        ? ["JBL", "Sony", "Noise", "Boult Audio", "OnePlus", "Apple"]
+        : ["Sony", "boAt", "Logitech", "JBL", "Noise"],
+      detectedMarket: isBoat ? "India · English" : "Global · English",
+      aliases: isBoat
+        ? ["boAt", "boAt Lifestyle", "boAt India", "boat-lifestyle.com", "Imagine Marketing Limited"]
+        : [cleanBrand, `${cleanBrand} Inc.`],
+      faviconUrl: metadata?.favicon || (websiteUrl ? `https://www.google.com/s2/favicons?domain=${websiteUrl.replace(/^https?:\/\//, "").split("/")[0]}&sz=64` : undefined),
       categories: [
-        { id: "cat-1", name: "Consumer Electronics & Gadgets", isAutoSelected: true },
-        { id: "cat-2", name: "Wireless Audio & Earbuds", isAutoSelected: true },
-        { id: "cat-3", name: "Smart Wearables & Tech Accessories", isAutoSelected: true },
-        { id: "cat-4", name: "Personal Computing & Peripherals", isAutoSelected: true },
-        { id: "cat-5", name: "Smart Home Devices", isAutoSelected: false },
-        { id: "cat-6", name: "Audio & Entertainment Systems", isAutoSelected: false },
+        { id: "cat-1", name: "Wireless Earbuds", isAutoSelected: true },
+        { id: "cat-2", name: "Bluetooth Headphones", isAutoSelected: true },
+        { id: "cat-3", name: "Wireless Neckbands", isAutoSelected: true },
+        { id: "cat-4", name: "Portable Bluetooth Speakers", isAutoSelected: true },
+        { id: "cat-5", name: "Home Soundbars", isAutoSelected: true },
+        { id: "cat-6", name: "Smartwatches", isAutoSelected: true },
+        { id: "cat-7", name: "Power Banks", isAutoSelected: false },
+        { id: "cat-8", name: "Phone Chargers", isAutoSelected: false },
+        { id: "cat-9", name: "Car Dashcams", isAutoSelected: false },
+        { id: "cat-10", name: "Home Projectors", isAutoSelected: false },
       ],
     };
   }

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   ChevronDown,
@@ -20,15 +21,14 @@ import {
 } from "lucide-react";
 import { useAuditData, StoredBrand } from "@/lib/audit-storage";
 import { useTranslation } from "@/lib/i18n/language-context";
-import { AuditDrawer } from "@/components/dashboard/audit-drawer";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export function WorkspaceSwitcher() {
+  const router = useRouter();
   const { audit, brands, switchBrand, deleteBrand, saveAudit } = useAuditData();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [userPlan, setUserPlan] = useState<string>("FREE");
   const [mounted, setMounted] = useState(false);
@@ -91,12 +91,11 @@ export function WorkspaceSwitcher() {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
-        setIsCreateDrawerOpen(false);
         setIsUpgradeModalOpen(false);
       }
     }
 
-    if (isOpen || isCreateDrawerOpen || isUpgradeModalOpen) {
+    if (isOpen || isUpgradeModalOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("keydown", handleKeyDown);
     }
@@ -104,7 +103,7 @@ export function WorkspaceSwitcher() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, isCreateDrawerOpen, isUpgradeModalOpen]);
+  }, [isOpen, isUpgradeModalOpen]);
 
   const [workspaceToDelete, setWorkspaceToDelete] = useState<StoredBrand | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,7 +137,7 @@ export function WorkspaceSwitcher() {
     if (isAtLimit) {
       setIsUpgradeModalOpen(true);
     } else {
-      setIsCreateDrawerOpen(true);
+      router.push("/dashboard?createWorkspace=true");
     }
   };
 
@@ -286,16 +285,6 @@ export function WorkspaceSwitcher() {
           </div>
         )}
       </div>
-
-      {/* Full Multi-Step Brand Workspace Creation & AI Audit Drawer */}
-      <AuditDrawer
-        isOpen={isCreateDrawerOpen}
-        onClose={() => setIsCreateDrawerOpen(false)}
-        isCreatingNewBrand={true}
-        onAuditComplete={() => {
-          setIsCreateDrawerOpen(false);
-        }}
-      />
 
       {/* Plan Limit Upgrade Modal */}
       {mounted && isUpgradeModalOpen && createPortal(

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAuditData, clearPendingScan, StoredBrand } from "@/lib/audit-storage";
+import { useAuditData, clearPendingScan, setActiveUserId, StoredBrand } from "@/lib/audit-storage";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
   Trash2,
@@ -428,6 +428,7 @@ function SettingsFormContent({
 
       resetAudit();
       clearPendingScan();
+      setActiveUserId(null);
       await signOut({ callbackUrl: "/" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to delete account. Please try again.";

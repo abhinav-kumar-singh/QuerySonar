@@ -1,9 +1,18 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { generateLiveSchema } from "@/lib/geo-engine/generators/geo-optimizer";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Please sign in to generate schema markup." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { brandName, websiteUrl, category, targetLocation, products, description } = body;
 

@@ -46,7 +46,9 @@ function SignInPageContent() {
 
   // Step: "email" | "otp"
   const [step, setStep] = useState<"email" | "otp">("email");
-  const [loading, setLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isVerifyLoading, setIsVerifyLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [cooldown, setCooldown] = useState(0);
@@ -98,13 +100,13 @@ function SignInPageContent() {
 
   const handleGoogleSignIn = async () => {
     try {
-      setLoading(true);
+      setIsGoogleLoading(true);
       setAuthError(null);
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch (err: any) {
       console.error("Sign in error:", err);
       setAuthError("Failed to connect with Google. Please try again.");
-      setLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
@@ -119,7 +121,7 @@ function SignInPageContent() {
       return;
     }
 
-    setLoading(true);
+    setIsEmailLoading(true);
     try {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
@@ -130,7 +132,7 @@ function SignInPageContent() {
       const data = await res.json();
       if (!res.ok) {
         setAuthError(data.error || "Failed to send login code. Please try again.");
-        setLoading(false);
+        setIsEmailLoading(false);
         return;
       }
 
@@ -141,7 +143,7 @@ function SignInPageContent() {
       console.error("Send OTP error:", err);
       setAuthError("Failed to send login code. Please check your connection.");
     } finally {
-      setLoading(false);
+      setIsEmailLoading(false);
     }
   };
 
@@ -186,7 +188,7 @@ function SignInPageContent() {
       return;
     }
 
-    setLoading(true);
+    setIsVerifyLoading(true);
     try {
       const res = await signIn("credentials", {
         email: trimmedEmail,
@@ -196,7 +198,7 @@ function SignInPageContent() {
 
       if (res?.error) {
         setAuthError("Invalid or expired login code. Please check the code or request a new one.");
-        setLoading(false);
+        setIsVerifyLoading(false);
         return;
       }
 
@@ -205,7 +207,7 @@ function SignInPageContent() {
     } catch (err: any) {
       console.error("Sign in error:", err);
       setAuthError("Failed to verify code. Please try again.");
-      setLoading(false);
+      setIsVerifyLoading(false);
     }
   };
 
@@ -391,10 +393,10 @@ function SignInPageContent() {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={isEmailLoading || isGoogleLoading}
                     className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                   >
-                    {loading ? (
+                    {isEmailLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
                         <span>{t("auth.sendingLoginCode")}</span>
@@ -420,10 +422,10 @@ function SignInPageContent() {
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    disabled={loading}
+                    disabled={isEmailLoading || isGoogleLoading}
                     className="w-full py-3.5 px-4 rounded-2xl bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-sm font-semibold shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                   >
-                    {loading ? (
+                    {isGoogleLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                         <span>{t("auth.connectingGoogle")}</span>
@@ -505,10 +507,10 @@ function SignInPageContent() {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={isVerifyLoading}
                     className="w-full py-3.5 rounded-2xl font-bold text-sm text-neutral-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                   >
-                    {loading ? (
+                    {isVerifyLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin text-neutral-950" />
                         <span>{t("auth.verifyingCode")}</span>

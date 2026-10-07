@@ -60,6 +60,7 @@ export async function GET() {
       websiteUrl: b.websiteUrl,
       competitors: b.competitors,
       queriesCount: b.queries.length,
+      queries: b.queries.map((q) => q.queryText),
       overallScore: b.auditRuns[0]?.overallScore ?? null,
       lastAuditDate: b.auditRuns[0]?.runDate ?? null,
       createdAt: b.createdAt,

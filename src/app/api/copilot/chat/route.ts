@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { callOpenRouterChatCompletion, getCleanOpenRouterKey } from "@/lib/geo-engine/openrouter-client";
 import { callRequestyChatCompletion, getCleanRequestyKey, REQUESTY_MODEL_MAP } from "@/lib/geo-engine/requesty-client";
 
@@ -62,6 +63,14 @@ interface AuditContext {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Please sign in to access Copilot." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { message, auditContext, history } = body as {
       message: string;

@@ -17,7 +17,7 @@ export interface TeamMemberResponse {
   workspaceId: string;
 }
 
-// In-memory fallback cache for unauthenticated / temporary demo brand workspaces
+// In-memory fallback cache for temporary/demo brand workspaces, strictly scoped by userId_workspaceId
 const inMemoryFallback: Record<string, TeamMemberResponse[]> = {};
 
 function getMaxSeatsForPlan(plan?: string | null): number {
@@ -48,14 +48,29 @@ function roleToClient(role: WorkspaceRole): "owner" | "admin" | "editor" | "view
   }
 }
 
-// Helper: Find Brand workspace either by exact ID or case-insensitive name match
-async function findBrand(workspaceIdentifier: string, userId?: string) {
-  if (!workspaceIdentifier) return null;
+// Helper: Find Brand workspace strictly belonging to or accessible by the authenticated user
+async function findBrand(workspaceIdentifier: string, userId?: string, userEmail?: string) {
+  if (!workspaceIdentifier || !userId) return null;
 
   try {
-    // 1. Try finding by exact Brand ID
-    const brandById = await prisma.brand.findUnique({
-      where: { id: workspaceIdentifier },
+    // 1. Try finding by exact Brand ID if owned by user or user is a member
+    const brandById = await prisma.brand.findFirst({
+      where: {
+        id: workspaceIdentifier,
+        OR: [
+          { userId },
+          {
+            members: {
+              some: {
+                OR: [
+                  { userId },
+                  ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
+                ],
+              },
+            },
+          },
+        ],
+      },
       include: {
         user: {
           select: { id: true, name: true, email: true, image: true, plan: true },
@@ -65,42 +80,43 @@ async function findBrand(workspaceIdentifier: string, userId?: string) {
 
     if (brandById) return brandById;
 
-    // 2. Try finding by user brands if userId is provided
-    if (userId) {
-      const userBrands = await prisma.brand.findMany({
-        where: { userId },
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, image: true, plan: true },
+    // 2. Try finding by user brands (or memberships) with slug/name matching
+    const accessibleBrands = await prisma.brand.findMany({
+      where: {
+        OR: [
+          { userId },
+          {
+            members: {
+              some: {
+                OR: [
+                  { userId },
+                  ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
+                ],
+              },
+            },
           },
-        },
-      });
-
-      const targetSlug = workspaceIdentifier.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const found = userBrands.find((b) => {
-        const bSlug = b.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-        return b.id === workspaceIdentifier || b.name.toLowerCase() === workspaceIdentifier.toLowerCase() || bSlug === targetSlug;
-      });
-      if (found) return found;
-    }
-
-    // 3. Search across all brands by name
-    const allBrands = await prisma.brand.findMany({
+        ],
+      },
       include: {
         user: {
           select: { id: true, name: true, email: true, image: true, plan: true },
         },
       },
-      take: 20,
     });
 
     const targetSlug = workspaceIdentifier.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    return allBrands.find((b) => {
+    const found = accessibleBrands.find((b) => {
       const bSlug = b.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      return b.id === workspaceIdentifier || b.name.toLowerCase() === workspaceIdentifier.toLowerCase() || bSlug === targetSlug;
-    }) || allBrands[0] || null;
+      return (
+        b.id === workspaceIdentifier ||
+        b.name.toLowerCase() === workspaceIdentifier.toLowerCase() ||
+        bSlug === targetSlug
+      );
+    });
+
+    return found || null;
   } catch (err) {
-    console.warn("DB findBrand lookup failed (using fallback):", err);
+    console.warn("DB findBrand lookup failed:", err);
     return null;
   }
 }
@@ -108,30 +124,32 @@ async function findBrand(workspaceIdentifier: string, userId?: string) {
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get("workspaceId") || "default";
 
-    const userEmail = session?.user?.email || "jordan.lee@querysonar.com";
-    const userName = session?.user?.name || "Jordan Lee";
-    const userImage = session?.user?.image || undefined;
+    const userEmail = session.user.email || "";
+    const userName = session.user.name || "Workspace Member";
+    const userImage = session.user.image || undefined;
 
     let userPlan = "FREE";
-    if (session?.user?.id) {
-      try {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: { plan: true },
-        });
-        if (dbUser?.plan) userPlan = dbUser.plan;
-      } catch (err) {
-        console.warn("Failed to query user plan from DB:", err);
-      }
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true },
+      });
+      if (dbUser?.plan) userPlan = dbUser.plan;
+    } catch (err) {
+      console.warn("Failed to query user plan from DB:", err);
     }
 
     const maxSeats = getMaxSeatsForPlan(userPlan);
 
-    // Try finding Brand in database
-    const brand = await findBrand(workspaceId, session?.user?.id);
+    // Try finding Brand in database scoped to caller
+    const brand = await findBrand(workspaceId, session.user.id, userEmail);
 
     if (brand) {
       try {
@@ -196,11 +214,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback for demo / unpersisted workspace
-    if (!inMemoryFallback[workspaceId]) {
-      inMemoryFallback[workspaceId] = [
+    // Fallback for demo / unpersisted workspace (strictly scoped to this user)
+    const userFallbackKey = `${session.user.id}_${workspaceId}`;
+    if (!inMemoryFallback[userFallbackKey]) {
+      inMemoryFallback[userFallbackKey] = [
         {
-          id: `mem-${session?.user?.id || "owner"}`,
+          id: `mem-${session.user.id}`,
           name: userName,
           email: userEmail,
           role: "owner",
@@ -212,7 +231,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const members = inMemoryFallback[workspaceId];
+    const members = inMemoryFallback[userFallbackKey];
     const activeCount = members.filter((m) => m.status === "active").length;
     const pendingCount = members.filter((m) => m.status === "invited").length;
 
@@ -236,6 +255,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const roleStr = typeof body.role === "string" ? body.role : "editor";
@@ -246,22 +269,41 @@ export async function POST(request: NextRequest) {
     }
 
     let userPlan = "FREE";
-    if (session?.user?.id) {
-      try {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: { plan: true },
-        });
-        if (dbUser?.plan) userPlan = dbUser.plan;
-      } catch (err) {
-        console.warn("Failed to check user plan:", err);
-      }
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true },
+      });
+      if (dbUser?.plan) userPlan = dbUser.plan;
+    } catch (err) {
+      console.warn("Failed to check user plan:", err);
     }
 
     const maxSeats = getMaxSeatsForPlan(userPlan);
-    const brand = await findBrand(workspaceId, session?.user?.id);
+    const brand = await findBrand(workspaceId, session.user.id, session.user.email || undefined);
 
     if (brand) {
+      // Authorization check: User must be brand owner or active ADMIN member
+      const isOwner = brand.userId === session.user.id;
+      const isAdminMember = await prisma.workspaceMember.findFirst({
+        where: {
+          brandId: brand.id,
+          OR: [
+            { userId: session.user.id },
+            ...(session.user.email ? [{ email: session.user.email.toLowerCase() }] : []),
+          ],
+          role: { in: [WorkspaceRole.OWNER, WorkspaceRole.ADMIN] },
+          status: MemberStatus.ACTIVE,
+        },
+      });
+
+      if (!isOwner && !isAdminMember) {
+        return NextResponse.json(
+          { error: "Forbidden. Only workspace owners and admins can invite team members." },
+          { status: 403 }
+        );
+      }
+
       try {
         // Check current members count in DB (1 owner + existing members)
         const existingMembersCount = await prisma.workspaceMember.count({
@@ -330,7 +372,7 @@ export async function POST(request: NextRequest) {
         // Send actual invitation email via Resend / EmailService
         const emailResult = await sendWorkspaceInviteEmail({
           to: email,
-          inviterName: session?.user?.name || brand.user?.name || "A team lead",
+          inviterName: session.user.name || brand.user?.name || "A team lead",
           brandName: brand.name,
           role: roleToClient(createdMember.role),
           inviteToken,
@@ -376,13 +418,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback for demo workspace or when DB is unreachable
-    if (!inMemoryFallback[workspaceId]) {
-      inMemoryFallback[workspaceId] = [
+    // Fallback for user's personal session / unpersisted workspace
+    const userFallbackKey = `${session.user.id}_${workspaceId}`;
+    if (!inMemoryFallback[userFallbackKey]) {
+      inMemoryFallback[userFallbackKey] = [
         {
-          id: `mem-${session?.user?.id || "owner"}`,
-          name: session?.user?.name || "Workspace Owner",
-          email: session?.user?.email || "owner@querysonar.com",
+          id: `mem-${session.user.id}`,
+          name: session.user.name || "Workspace Owner",
+          email: session.user.email || "owner@querysonar.com",
           role: "owner",
           status: "active",
           joinedAt: new Date().toISOString(),
@@ -391,7 +434,7 @@ export async function POST(request: NextRequest) {
       ];
     }
 
-    const currentMembers = inMemoryFallback[workspaceId];
+    const currentMembers = inMemoryFallback[userFallbackKey];
     if (currentMembers.length >= maxSeats) {
       return NextResponse.json(
         {
@@ -423,12 +466,12 @@ export async function POST(request: NextRequest) {
       workspaceId,
     };
 
-    inMemoryFallback[workspaceId].push(fallbackMember);
+    inMemoryFallback[userFallbackKey].push(fallbackMember);
 
     // Send email or log link in dev
     const emailResult = await sendWorkspaceInviteEmail({
       to: email,
-      inviterName: session?.user?.name || "Workspace Lead",
+      inviterName: session.user.name || "Workspace Lead",
       brandName: workspaceId.toUpperCase(),
       role: fallbackMember.role,
       inviteToken,
@@ -451,6 +494,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const memberId = typeof body.memberId === "string" ? body.memberId.trim() : "";
     const roleStr = typeof body.role === "string" ? body.role : "editor";
@@ -466,40 +514,71 @@ export async function PUT(request: NextRequest) {
 
     const newRole = normalizeRole(roleStr);
 
-    // Try updating in Database
+    // Try updating in Database with authorization checks
     try {
-      const updated = await prisma.workspaceMember.update({
+      const targetMember = await prisma.workspaceMember.findUnique({
         where: { id: memberId },
-        data: { role: newRole },
+        include: { brand: true },
       });
 
-      return NextResponse.json({
-        success: true,
-        member: {
-          id: updated.id,
-          name: updated.name || updated.email.split("@")[0],
-          email: updated.email,
-          role: roleToClient(updated.role),
-          status: updated.status === MemberStatus.ACTIVE ? "active" : "invited",
-          joinedAt: (updated.joinedAt || updated.invitedAt).toISOString(),
-          workspaceId: updated.brandId,
-        },
-      });
-    } catch {
-      // Fallback for memory store
-      const members = inMemoryFallback[workspaceId] || [];
-      const targetIdx = members.findIndex((m) => m.id === memberId);
+      if (targetMember) {
+        // Authorization check: Is caller the brand owner or an active admin?
+        const isOwner = targetMember.brand.userId === session.user.id;
+        const isAdminMember = await prisma.workspaceMember.findFirst({
+          where: {
+            brandId: targetMember.brandId,
+            OR: [
+              { userId: session.user.id },
+              ...(session.user.email ? [{ email: session.user.email.toLowerCase() }] : []),
+            ],
+            role: { in: [WorkspaceRole.OWNER, WorkspaceRole.ADMIN] },
+            status: MemberStatus.ACTIVE,
+          },
+        });
 
-      if (targetIdx !== -1) {
-        if (members[targetIdx].role === "owner") {
-          return NextResponse.json({ error: "Cannot change the workspace owner's role" }, { status: 400 });
+        if (!isOwner && !isAdminMember) {
+          return NextResponse.json(
+            { error: "Forbidden. Only workspace owners and admins can modify member roles." },
+            { status: 403 }
+          );
         }
-        members[targetIdx].role = roleToClient(newRole);
-        return NextResponse.json({ success: true, member: members[targetIdx] });
-      }
 
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+        const updated = await prisma.workspaceMember.update({
+          where: { id: memberId },
+          data: { role: newRole },
+        });
+
+        return NextResponse.json({
+          success: true,
+          member: {
+            id: updated.id,
+            name: updated.name || updated.email.split("@")[0],
+            email: updated.email,
+            role: roleToClient(updated.role),
+            status: updated.status === MemberStatus.ACTIVE ? "active" : "invited",
+            joinedAt: (updated.joinedAt || updated.invitedAt).toISOString(),
+            workspaceId: updated.brandId,
+          },
+        });
+      }
+    } catch {
+      // Continue to fallback
     }
+
+    // Fallback for memory store (scoped by user session)
+    const userFallbackKey = `${session.user.id}_${workspaceId}`;
+    const members = inMemoryFallback[userFallbackKey] || [];
+    const targetIdx = members.findIndex((m) => m.id === memberId);
+
+    if (targetIdx !== -1) {
+      if (members[targetIdx].role === "owner") {
+        return NextResponse.json({ error: "Cannot change the workspace owner's role" }, { status: 400 });
+      }
+      members[targetIdx].role = roleToClient(newRole);
+      return NextResponse.json({ success: true, member: members[targetIdx] });
+    }
+
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
   } catch (error) {
     console.error("Failed to update member role:", error);
     return NextResponse.json(
@@ -511,6 +590,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get("memberId");
     const workspaceId = searchParams.get("workspaceId") || "default";
@@ -523,36 +607,71 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Cannot remove the workspace owner" }, { status: 400 });
     }
 
-    // Try deleting from database
+    // Try deleting from database with authorization checks
     try {
-      await prisma.workspaceMember.delete({
+      const targetMember = await prisma.workspaceMember.findUnique({
         where: { id: memberId },
+        include: { brand: true },
       });
 
-      return NextResponse.json({
-        success: true,
-        deletedId: memberId,
-      });
+      if (targetMember) {
+        // Authorization check: Is caller the brand owner, admin, or the member themselves leaving?
+        const isOwner = targetMember.brand.userId === session.user.id;
+        const isSelf =
+          targetMember.userId === session.user.id ||
+          (session.user.email &&
+            targetMember.email.toLowerCase() === session.user.email.toLowerCase());
+        const isAdminMember = await prisma.workspaceMember.findFirst({
+          where: {
+            brandId: targetMember.brandId,
+            OR: [
+              { userId: session.user.id },
+              ...(session.user.email ? [{ email: session.user.email.toLowerCase() }] : []),
+            ],
+            role: { in: [WorkspaceRole.OWNER, WorkspaceRole.ADMIN] },
+            status: MemberStatus.ACTIVE,
+          },
+        });
+
+        if (!isOwner && !isAdminMember && !isSelf) {
+          return NextResponse.json(
+            { error: "Forbidden. You do not have permission to remove this member." },
+            { status: 403 }
+          );
+        }
+
+        await prisma.workspaceMember.delete({
+          where: { id: memberId },
+        });
+
+        return NextResponse.json({
+          success: true,
+          deletedId: memberId,
+        });
+      }
     } catch {
-      // Fallback for memory store
-      const members = inMemoryFallback[workspaceId] || [];
-      const target = members.find((m) => m.id === memberId);
-
-      if (!target) {
-        return NextResponse.json({ error: "Member not found" }, { status: 404 });
-      }
-
-      if (target.role === "owner") {
-        return NextResponse.json({ error: "Cannot remove the workspace owner" }, { status: 400 });
-      }
-
-      inMemoryFallback[workspaceId] = members.filter((m) => m.id !== memberId);
-
-      return NextResponse.json({
-        success: true,
-        deletedId: memberId,
-      });
+      // Continue to fallback
     }
+
+    // Fallback for memory store (scoped by user session)
+    const userFallbackKey = `${session.user.id}_${workspaceId}`;
+    const members = inMemoryFallback[userFallbackKey] || [];
+    const target = members.find((m) => m.id === memberId);
+
+    if (!target) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    if (target.role === "owner") {
+      return NextResponse.json({ error: "Cannot remove the workspace owner" }, { status: 400 });
+    }
+
+    inMemoryFallback[userFallbackKey] = members.filter((m) => m.id !== memberId);
+
+    return NextResponse.json({
+      success: true,
+      deletedId: memberId,
+    });
   } catch (error) {
     console.error("Failed to remove member:", error);
     return NextResponse.json(
@@ -561,4 +680,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-

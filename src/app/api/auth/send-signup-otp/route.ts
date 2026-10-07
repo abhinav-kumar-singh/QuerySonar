@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { sendVerificationOtpEmail } from "@/lib/email";
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     // Generate 6-digit numeric OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
     const identifier = `signup-otp:${trimmedEmail}`;
 

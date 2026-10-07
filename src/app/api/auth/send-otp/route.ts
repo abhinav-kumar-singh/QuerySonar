@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { sendVerificationOtpEmail } from "@/lib/email";
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // Generate cryptographically secure 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
     // Delete any prior OTP tokens for this email

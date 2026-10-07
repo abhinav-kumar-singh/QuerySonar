@@ -11,6 +11,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useAuthModal } from "@/components/auth/auth-modal-context";
 import { useTranslation } from "@/lib/i18n/language-context";
+import { setActiveUserId } from "@/lib/audit-storage";
 
 interface HeaderProps {
   className?: string;
@@ -117,7 +118,10 @@ export function Header({ className }: HeaderProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => {
+                  setActiveUserId(null);
+                  signOut({ callbackUrl: "/" });
+                }}
                 className="gap-1.5 text-xs h-9 cursor-pointer border-[var(--syn-border)] text-[var(--syn-heading)] hover:bg-[var(--syn-card-subtle)]"
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -253,6 +257,7 @@ export function Header({ className }: HeaderProps) {
                     className="w-full justify-center gap-2 border-[var(--syn-border)] text-[var(--syn-heading)] hover:bg-[var(--syn-card-subtle)]"
                     onClick={() => {
                       setMobileMenuOpen(false);
+                      setActiveUserId(null);
                       signOut({ callbackUrl: "/" });
                     }}
                   >

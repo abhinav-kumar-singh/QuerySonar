@@ -1,12 +1,48 @@
 "use client";
 
 import { useSyncExternalStore, useCallback, useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import type { AuditResult } from "@/lib/geo-engine/types";
 export type { AuditResult } from "@/lib/geo-engine/types";
 
-const STORAGE_KEY = "georadar_audit_result";
-const BRANDS_LIST_KEY = "georadar_brands_list";
-const PENDING_SCAN_KEY = "georadar_pending_scan";
+let currentActiveUserId: string | null = null;
+
+export function getActiveUserId(): string | null {
+  return currentActiveUserId;
+}
+
+export function setActiveUserId(id: string | null): void {
+  if (currentActiveUserId !== id) {
+    currentActiveUserId = id;
+    cachedSnapshotString = null;
+    cachedAuditResult = null;
+    cachedBrandsString = null;
+    cachedBrandsList = [];
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("georadar_audit_updated"));
+      window.dispatchEvent(new Event("georadar_brands_updated"));
+    }
+  }
+}
+
+export function getStorageKey(userId?: string | null): string {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  if (uid && uid !== "anonymous") {
+    return `georadar_audit_result_${uid}`;
+  }
+  return "georadar_anon_audit_result";
+}
+
+export function getBrandsListKey(userId?: string | null): string {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  if (uid && uid !== "anonymous") {
+    return `georadar_brands_list_${uid}`;
+  }
+  return "georadar_anon_brands_list";
+}
+
+export const PENDING_SCAN_KEY = "georadar_pending_scan";
+export const DRAFT_FORM_KEY = "georadar_audit_form_draft";
 
 export interface StoredBrand {
   id: string;
@@ -28,10 +64,19 @@ let cachedAuditResult: AuditResult | null = null;
 let cachedBrandsString: string | null = null;
 let cachedBrandsList: StoredBrand[] = [];
 
+// Clean legacy shared un-scoped keys on client load to prevent cross-account pollution
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem("georadar_audit_result");
+    localStorage.removeItem("georadar_brands_list");
+  } catch {}
+}
+
 function getSnapshot(): AuditResult | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getStorageKey();
+    const raw = localStorage.getItem(key);
     if (raw !== cachedSnapshotString) {
       cachedSnapshotString = raw;
       cachedAuditResult = raw ? JSON.parse(raw) : null;
@@ -46,12 +91,13 @@ function getSnapshot(): AuditResult | null {
 function getBrandsSnapshot(): StoredBrand[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(BRANDS_LIST_KEY);
+    const brandsKey = getBrandsListKey();
+    const raw = localStorage.getItem(brandsKey);
     if (raw !== cachedBrandsString) {
       cachedBrandsString = raw;
       cachedBrandsList = raw ? JSON.parse(raw) : [];
     }
-    // Fallback: If no brands list exists yet but active audit exists, initialize brands list with active audit
+    // Fallback: If no brands list exists yet for this user but active audit exists, initialize brands list with active audit
     if (cachedBrandsList.length === 0 && cachedAuditResult) {
       const initialBrand: StoredBrand = {
         id: cachedAuditResult.brandProfile.name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
@@ -67,7 +113,7 @@ function getBrandsSnapshot(): StoredBrand[] {
       };
       cachedBrandsList = [initialBrand];
       try {
-        localStorage.setItem(BRANDS_LIST_KEY, JSON.stringify(cachedBrandsList));
+        localStorage.setItem(brandsKey, JSON.stringify(cachedBrandsList));
       } catch {}
     }
     return cachedBrandsList;
@@ -99,14 +145,17 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
-export function saveStoredAudit(result: AuditResult): void {
+export function saveStoredAudit(result: AuditResult, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    const auditKey = getStorageKey(userId);
+    const brandsKey = getBrandsListKey(userId);
+
+    localStorage.setItem(auditKey, JSON.stringify(result));
     
-    // Also sync into brands list
+    // Also sync into this user's brands list
     const brandId = result.brandProfile.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    const existingRaw = localStorage.getItem(BRANDS_LIST_KEY);
+    const existingRaw = localStorage.getItem(brandsKey);
     let brands: StoredBrand[] = existingRaw ? JSON.parse(existingRaw) : [];
 
     const newBrandEntry: StoredBrand = {
@@ -129,7 +178,7 @@ export function saveStoredAudit(result: AuditResult): void {
       brands.push(newBrandEntry);
     }
 
-    localStorage.setItem(BRANDS_LIST_KEY, JSON.stringify(brands));
+    localStorage.setItem(brandsKey, JSON.stringify(brands));
     cachedBrandsString = null;
     cachedSnapshotString = null;
 
@@ -140,11 +189,14 @@ export function saveStoredAudit(result: AuditResult): void {
   }
 }
 
-export function clearStoredAudit(): void {
+export function clearStoredAudit(userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(BRANDS_LIST_KEY);
+    const auditKey = getStorageKey(userId);
+    const brandsKey = getBrandsListKey(userId);
+
+    localStorage.removeItem(auditKey);
+    localStorage.removeItem(brandsKey);
     cachedSnapshotString = null;
     cachedAuditResult = null;
     cachedBrandsString = null;
@@ -156,15 +208,18 @@ export function clearStoredAudit(): void {
   }
 }
 
-export function switchActiveBrand(brandId: string): void {
+export function switchActiveBrand(brandId: string, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    const raw = localStorage.getItem(BRANDS_LIST_KEY);
+    const brandsKey = getBrandsListKey(userId);
+    const auditKey = getStorageKey(userId);
+
+    const raw = localStorage.getItem(brandsKey);
     if (!raw) return;
     const brands: StoredBrand[] = JSON.parse(raw);
     const target = brands.find((b) => b.id === brandId);
     if (target && target.auditResult) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(target.auditResult));
+      localStorage.setItem(auditKey, JSON.stringify(target.auditResult));
       cachedSnapshotString = null;
       window.dispatchEvent(new Event("georadar_audit_updated"));
     }
@@ -173,22 +228,25 @@ export function switchActiveBrand(brandId: string): void {
   }
 }
 
-export function deleteStoredBrand(brandId: string): void {
+export function deleteStoredBrand(brandId: string, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    const raw = localStorage.getItem(BRANDS_LIST_KEY);
+    const brandsKey = getBrandsListKey(userId);
+    const auditKey = getStorageKey(userId);
+
+    const raw = localStorage.getItem(brandsKey);
     if (!raw) return;
     let brands: StoredBrand[] = JSON.parse(raw);
     brands = brands.filter((b) => b.id !== brandId);
-    localStorage.setItem(BRANDS_LIST_KEY, JSON.stringify(brands));
+    localStorage.setItem(brandsKey, JSON.stringify(brands));
     cachedBrandsString = null;
 
     // If active audit was this brand, switch to first remaining or clear
     if (cachedAuditResult?.brandProfile?.name?.toLowerCase()?.replace(/[^a-z0-9]/g, "-") === brandId) {
       if (brands.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(brands[0].auditResult));
+        localStorage.setItem(auditKey, JSON.stringify(brands[0].auditResult));
       } else {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(auditKey);
       }
       cachedSnapshotString = null;
     }
@@ -201,10 +259,130 @@ export function deleteStoredBrand(brandId: string): void {
 }
 
 export function useAuditData() {
+  const { data: session, status } = useSession();
   const [mounted, setMounted] = useState(false);
+
+  const userId = session?.user?.id || (session?.user?.email ? `email_${session.user.email.toLowerCase()}` : null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update active user whenever session status/user resolves
+  useEffect(() => {
+    setActiveUserId(userId);
+  }, [userId]);
+
+  // Hydrate from database if local brands are empty for an authenticated user on a new device/browser
+  useEffect(() => {
+    if (!userId || userId.startsWith("email_") || !mounted) return;
+
+    let isCancelled = false;
+    async function hydrateFromServer() {
+      try {
+        const localKey = getBrandsListKey(userId);
+        const existingRaw = typeof window !== "undefined" ? localStorage.getItem(localKey) : null;
+        const existingBrands: StoredBrand[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+        // Fetch user's registered workspaces from server
+        const res = await fetch("/api/workspaces");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isCancelled) return;
+
+        if (data.success && Array.isArray(data.workspaces) && data.workspaces.length > 0) {
+          const serverWorkspaces = data.workspaces;
+          if (existingBrands.length === 0) {
+            const hydrated: StoredBrand[] = serverWorkspaces.map((ws: {
+              id: string;
+              name: string;
+              websiteUrl?: string;
+              overallScore?: number | null;
+              queriesCount?: number;
+              queries?: string[];
+              competitors?: string[];
+              lastAuditDate?: string | null;
+              createdAt?: string;
+            }) => {
+              const brandSlug = ws.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+              return {
+                id: brandSlug || ws.id,
+                name: ws.name,
+                websiteUrl: ws.websiteUrl || "",
+                overallScore: Math.round(ws.overallScore || 0),
+                queriesCount: ws.queriesCount || (ws.queries?.length || 1),
+                mentionsCount: 0,
+                lastScannedAt: ws.lastAuditDate || ws.createdAt || new Date().toISOString(),
+                queries: ws.queries || [],
+                competitors: ws.competitors || [],
+                auditResult: {
+                  brandProfile: {
+                    name: ws.name,
+                    websiteUrl: ws.websiteUrl || "",
+                    competitors: ws.competitors || [],
+                  },
+                  shareOfVoice: {
+                    brandName: ws.name,
+                    overallScore: Math.round(ws.overallScore || 0),
+                    perEngine: {
+                      openai: Math.round(ws.overallScore || 0),
+                      perplexity: Math.round(ws.overallScore || 0),
+                      gemini: Math.round(ws.overallScore || 0),
+                      claude: 0,
+                      deepseek: 0,
+                      grok: 0,
+                    },
+                    totalQueriesTracked: ws.queriesCount || 1,
+                    queriesMentionedIn: 0,
+                  },
+                  topCompetitors: (ws.competitors || []).map((c: string) => ({
+                    name: c,
+                    bestFor: "Alternative",
+                    reason: "Tracked competitor",
+                    mentionedByEngines: ["openai", "gemini", "perplexity"],
+                  })),
+                  remediationActions: [],
+                  actions: [],
+                  citedSources: [],
+                  runDate: ws.lastAuditDate ? new Date(ws.lastAuditDate) : new Date(ws.createdAt || Date.now()),
+                  mentionAnalyses: (ws.queries || []).map((q: string) => ({
+                    engine: "openai" as const,
+                    query: q,
+                    brandMentioned: false,
+                    mentionPosition: null,
+                    sentiment: "neutral" as const,
+                    competitorsMentioned: [],
+                    citations: [],
+                    rawResponse: "",
+                    status: "live" as const,
+                  })),
+                  scannedAt: ws.lastAuditDate || ws.createdAt || new Date().toISOString(),
+                } as unknown as AuditResult,
+              };
+            });
+
+            localStorage.setItem(localKey, JSON.stringify(hydrated));
+            const auditKey = getStorageKey(userId);
+            if (!localStorage.getItem(auditKey) && hydrated[0]) {
+              localStorage.setItem(auditKey, JSON.stringify(hydrated[0].auditResult));
+            }
+
+            cachedBrandsString = null;
+            cachedSnapshotString = null;
+            window.dispatchEvent(new Event("georadar_audit_updated"));
+            window.dispatchEvent(new Event("georadar_brands_updated"));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to hydrate workspaces from server:", err);
+      }
+    }
+
+    hydrateFromServer();
+    return () => {
+      isCancelled = true;
+    };
+  }, [userId, mounted]);
 
   const rawAudit = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const rawBrands = useSyncExternalStore(subscribe, getBrandsSnapshot, getServerBrandsSnapshot);
@@ -213,25 +391,25 @@ export function useAuditData() {
   const brands = mounted ? rawBrands : [];
 
   const save = useCallback((newResult: AuditResult) => {
-    saveStoredAudit(newResult);
-  }, []);
+    saveStoredAudit(newResult, userId);
+  }, [userId]);
 
   const reset = useCallback(() => {
-    clearStoredAudit();
-  }, []);
+    clearStoredAudit(userId);
+  }, [userId]);
 
   const switchBrand = useCallback((brandId: string) => {
-    switchActiveBrand(brandId);
-  }, []);
+    switchActiveBrand(brandId, userId);
+  }, [userId]);
 
   const deleteBrand = useCallback((brandId: string) => {
-    deleteStoredBrand(brandId);
-  }, []);
+    deleteStoredBrand(brandId, userId);
+  }, [userId]);
 
   return {
     audit,
     brands,
-    isLoading: !mounted,
+    isLoading: !mounted || status === "loading",
     isHydrated: mounted,
     saveAudit: save,
     resetAudit: reset,
@@ -289,8 +467,6 @@ export function clearPendingScan(): void {
   }
 }
 
-export const DRAFT_FORM_KEY = "georadar_audit_form_draft";
-
 export interface AuditFormDraft {
   brandName: string;
   websiteUrl: string;
@@ -304,27 +480,32 @@ export interface AuditFormDraft {
   prompts?: Array<{ id: string; categoryTag: string; queryText: string; type?: string; personaLabel?: string }>;
 }
 
-export function saveAuditFormDraft(draft: AuditFormDraft): void {
+export function saveAuditFormDraft(draft: AuditFormDraft, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(DRAFT_FORM_KEY, JSON.stringify(draft));
+    const uid = userId !== undefined ? userId : currentActiveUserId;
+    const key = uid ? `${DRAFT_FORM_KEY}_${uid}` : `${DRAFT_FORM_KEY}_anon`;
+    localStorage.setItem(key, JSON.stringify(draft));
   } catch {}
 }
 
-export function getAuditFormDraft(): AuditFormDraft | null {
+export function getAuditFormDraft(userId?: string | null): AuditFormDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DRAFT_FORM_KEY);
+    const uid = userId !== undefined ? userId : currentActiveUserId;
+    const key = uid ? `${DRAFT_FORM_KEY}_${uid}` : `${DRAFT_FORM_KEY}_anon`;
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export function clearAuditFormDraft(): void {
+export function clearAuditFormDraft(userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(DRAFT_FORM_KEY);
+    const uid = userId !== undefined ? userId : currentActiveUserId;
+    const key = uid ? `${DRAFT_FORM_KEY}_${uid}` : `${DRAFT_FORM_KEY}_anon`;
+    localStorage.removeItem(key);
   } catch {}
 }
-

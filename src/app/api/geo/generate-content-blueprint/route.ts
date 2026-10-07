@@ -1,9 +1,18 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { generateLiveContentBlueprint } from "@/lib/geo-engine/generators/geo-optimizer";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Please sign in to generate content blueprints." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { query, brandName, category, targetLocation, competitors } = body;
 

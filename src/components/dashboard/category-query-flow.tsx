@@ -21,6 +21,7 @@ export interface CategoryItem {
   name: string;
   isAutoSelected: boolean;
   confidence?: number;
+  description?: string;
 }
 
 export interface PromptItem {

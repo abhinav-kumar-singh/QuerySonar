@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sparkles,
   ArrowUpRight,
@@ -80,6 +81,7 @@ import {
   CategoryItem,
   PromptItem,
 } from "@/components/dashboard/category-query-flow";
+import { WelcomeOverviewV2 } from "@/components/dashboard/welcome-v2";
 import { useTranslation } from "@/lib/i18n";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
@@ -173,12 +175,16 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { t } = useTranslation();
   const { audit, brands, saveAudit, resetAudit, isLoading } = useAuditData();
   const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
+  const isCreatingWorkspace = searchParams.get("createWorkspace") === "true";
   const hasScan = Boolean(audit);
+  const showWelcomeLaunchpad = !hasScan || isCreatingWorkspace;
 
   // Live vs Snapshot Mode Toggle
   const [isLiveMode, setIsLiveMode] = useState(true);
@@ -295,8 +301,26 @@ export default function DashboardPage() {
     };
   }, [isScanning]);
 
-  // Restore form draft on tab switch or navigation
+  // Restore form draft or reset on new workspace mode
   useEffect(() => {
+    if (isCreatingWorkspace) {
+      setBrandName("");
+      setWebsiteUrl("");
+      setTargetLocation("");
+      setQueriesList([""]);
+      setCategories([]);
+      setPrompts([]);
+      setUseCategoryFlow(false);
+      setSuggestedQueries([]);
+      setDetectedCompetitors([]);
+      setBrandSummary("");
+      setCategory("");
+      setAutoQueryError("");
+      setScanError("");
+      clearAuditFormDraft();
+      return;
+    }
+
     try {
       const draft = getAuditFormDraft();
       if (draft) {
@@ -317,7 +341,7 @@ export default function DashboardPage() {
         }
       }
     } catch {}
-  }, []);
+  }, [isCreatingWorkspace]);
 
   // Persist form draft on any change
   useEffect(() => {
@@ -661,6 +685,9 @@ export default function DashboardPage() {
 
       const data = await response.json();
       saveAudit(data);
+      if (isCreatingWorkspace) {
+        router.push("/dashboard");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to complete scan. Please try again.";
       setScanError(msg);
@@ -763,416 +790,58 @@ export default function DashboardPage() {
           STATE A: NO AUDIT DATA YET (OR AFTER RESET DATA)
           Shows the central Overview Launchpad & hides dashboard widgets
           ───────────────────────────────────────────────────────────── */}
-      {!hasScan ? (
-        <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-2">
-            <div>
-              <p className="text-[11px] font-mono tracking-widest text-[var(--syn-subtle)] uppercase mb-1">
-                {t("dashboard.portfolioEyebrow")}
-              </p>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--syn-heading)]">
-                {t("dashboard.welcomeHeading", { name: session?.user?.name || "Explorer" })}
-              </h1>
-              <p className="text-xs sm:text-sm text-[var(--syn-muted)] mt-1 max-w-2xl">
-                {t("dashboard.welcomeDesc")}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="px-3.5 py-1.5 rounded-xl bg-[var(--syn-card)] border border-[var(--syn-border)] text-xs font-mono">
-                <span className="text-[var(--syn-muted)]">{t("dashboard.activePlan")}: </span>
-                <span className="font-bold text-[var(--syn-heading)]">{planConfig.label}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 4 Bento KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="syn-card flex flex-col justify-between h-[150px]">
-              <div className="flex items-center justify-between text-xs text-[var(--syn-muted)] font-medium">
-                <span>{t("dashboard.kpiTrackedBrands")}</span>
-                <span className="syn-badge syn-badge-neutral">{planConfig.label}</span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-[var(--syn-heading)] font-mono">
-                    {totalBrandsCount}
-                  </span>
-                  <span className="text-xs text-[var(--syn-subtle)]">
-                    {t("dashboard.ofActive", { max: planConfig.maxBrands })}
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--syn-subtle)] mt-1">{t("dashboard.portfolioCoverage")}</p>
-              </div>
-            </div>
-
-            <div className="syn-card flex flex-col justify-between h-[150px]">
-              <div className="flex items-center justify-between text-xs text-[var(--syn-muted)] font-medium">
-                <span>{t("dashboard.kpiAvgVisibility")}</span>
-                <span className="syn-badge syn-badge-emerald">{t("dashboard.consensus")}</span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-[var(--syn-heading)] font-mono">
-                    0%
-                  </span>
-                  <span className="text-xs text-[var(--syn-subtle)] font-semibold">{t("dashboard.shareOfVoice")}</span>
-                </div>
-                <p className="text-xs text-[var(--syn-subtle)] mt-1">{t("dashboard.weightedEngines")}</p>
-              </div>
-            </div>
-
-            <div className="syn-card flex flex-col justify-between h-[150px]">
-              <div className="flex items-center justify-between text-xs text-[var(--syn-muted)] font-medium">
-                <span>{t("dashboard.kpiAuditedQueries")}</span>
-                <span className="syn-badge syn-badge-neutral">{t("dashboard.clusters")}</span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-[var(--syn-heading)] font-mono">
-                    0
-                  </span>
-                  <span className="text-xs text-[var(--syn-subtle)]">{t("dashboard.queriesMonitored")}</span>
-                </div>
-                <p className="text-xs text-[var(--syn-subtle)] mt-1">{t("dashboard.buyerProbes")}</p>
-              </div>
-            </div>
-
-            <div className="syn-card flex flex-col justify-between h-[150px]">
-              <div className="flex items-center justify-between text-xs text-[var(--syn-muted)] font-medium">
-                <span>{t("dashboard.kpiAiCitations")}</span>
-                <span className="syn-badge syn-badge-emerald">{t("dashboard.liveSources")}</span>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-[var(--syn-heading)] font-mono">
-                    0
-                  </span>
-                  <span className="text-xs text-[var(--syn-subtle)] font-semibold">{t("dashboard.groundedCitations")}</span>
-                </div>
-                <p className="text-xs text-[var(--syn-subtle)] mt-1">{t("dashboard.authorityDomains")}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Central Launchpad Card */}
-          <div className="syn-card flex flex-col gap-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--syn-border)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#86EFAC]/20 border border-[#86EFAC]/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <Radar className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--syn-heading)]">
-                    {t("dashboard.launchBrandAudit")}
-                  </h2>
-                  <p className="text-xs text-[var(--syn-muted)]">
-                    {t("dashboard.probeEnginesDesc")}
-                  </p>
-                </div>
-              </div>
-
+      {showWelcomeLaunchpad ? (
+        <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
+          {/* Header if creating a workspace while having existing brand data */}
+          {isCreatingWorkspace && hasScan && (
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--syn-border)]">
               <div className="flex items-center gap-2">
-                <span className="syn-badge syn-badge-emerald">{t("dashboard.enginesReady")}</span>
-                <button
-                  type="button"
-                  onClick={handleResetForm}
-                  disabled={isScanning || (!brandName && !websiteUrl && queriesList.every((q) => !q.trim()) && suggestedQueries.length === 0)}
-                  className="syn-btn-secondary !text-xs !py-1.5 !px-3 flex items-center gap-1.5 cursor-pointer hover:text-red-500 hover:border-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  title="Reset brand name, website URL, and all generated queries"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 opacity-60" />
-                  <span>{t("dashboard.resetFormBtn")}</span>
-                </button>
+                <span className="text-xs font-bold text-[var(--syn-heading)]">
+                  {t("auditDrawer.createBrandWorkspaceTitle")}
+                </span>
+                <span className="text-[10px] font-mono text-[var(--syn-muted)]">
+                  • New Multi-Engine Audit
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--syn-muted)] hover:text-[var(--syn-heading)] bg-[var(--syn-card-inner)] border border-[var(--syn-border)] hover:border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                ← Cancel & Return to {audit?.brandProfile?.name || "Workspace"}
+              </button>
             </div>
+          )}
 
-            {/* Live AI Thinking & Engine Probe Banner (Top-Level) */}
-            {isScanning && (
-              <div className="rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-[var(--syn-card)] to-[var(--syn-card-inner)] border-2 border-emerald-500/40 shadow-xl flex flex-col gap-4 animate-in fade-in slide-in-from-top-3 duration-300 relative overflow-hidden">
-                {/* Background ambient glow */}
-                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                {/* Top header row: Stage Title + Live Pulsing Indicator + Timer */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 shrink-0">
-                      <Loader2 className="w-5 h-5 animate-spin text-emerald-500 dark:text-emerald-400" />
-                      <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                          <Activity className="w-3.5 h-3.5" />
-                          Live Multi-Engine AI Pipeline
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
-                          {Math.round(scanProgress)}% Completed
-                        </span>
-                      </div>
-                      <h3 className="text-sm sm:text-base font-bold text-[var(--syn-heading)] font-mono mt-0.5">
-                        {scanStage || "Probing multi-engine AI endpoints..."}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
-                    <span className="px-3 py-1.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] text-[var(--syn-heading)] flex items-center gap-2 shadow-xs">
-                      <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="font-bold">{scanElapsed.toFixed(1)}s</span>
-                      <span className="text-[var(--syn-muted)]">elapsed</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Animated Progress Bar with Gradient Glow */}
-                <div className="relative z-10 space-y-1">
-                  <div className="w-full bg-black/10 dark:bg-white/10 h-2.5 rounded-full overflow-hidden p-0.5 border border-[var(--syn-border)]">
-                    <div
-                      className="bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 h-full rounded-full transition-all duration-300 shadow-sm"
-                      style={{ width: `${Math.min(scanProgress, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Live Real-time Status Badges for 6 AI Engines */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 relative z-10">
-                  {[
-                    { name: "ChatGPT", model: "GPT-4o", status: scanProgress > 30 ? "Analyzing" : "Probing" },
-                    { name: "Gemini", model: "2.0 Flash", status: scanProgress > 15 ? "Grounding" : "Connecting" },
-                    { name: "Perplexity", model: "Sonar Pro", status: scanProgress > 45 ? "Citations" : "Probing" },
-                    { name: "Claude", model: "3.7 Sonnet", status: scanProgress > 65 ? "Reasoning" : "Queued" },
-                    { name: "DeepSeek", model: "V3 Search", status: scanProgress > 75 ? "Consensus" : "Queued" },
-                    { name: "Grok", model: "Grok 3", status: scanProgress > 85 ? "Synthesizing" : "Queued" },
-                  ].map((eng) => (
-                    <div
-                      key={eng.name}
-                      className="p-2.5 rounded-xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] flex flex-col justify-between gap-1 shadow-xs"
-                    >
-                      <div className="flex items-center justify-between text-[11px] font-bold text-[var(--syn-heading)]">
-                        <span>{eng.name}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-[var(--syn-muted)] font-mono">
-                        <span>{eng.model}</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{eng.status}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Live Telemetry Info Message */}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--syn-muted)] pt-1 border-t border-[var(--syn-border)] relative z-10">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    Simulating 18 search query variations & citation analysis across live engines.
-                  </span>
-                  <span className="font-mono text-[11px] text-[var(--syn-subtle)]">
-                    6 concurrent engine workers active
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleRunScan} className="flex flex-col gap-5">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div className="md:col-span-3">
-                  <label className="text-xs font-bold text-[var(--syn-heading)] block mb-1.5">
-                    {t("dashboard.brandName")} <span className="text-emerald-600 dark:text-emerald-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={t("dashboard.brandPlaceholder")}
-                    value={brandName}
-                    onChange={(e) => setBrandName(e.target.value)}
-                    required
-                    disabled={isScanning}
-                    className="w-full px-4 py-2.5 rounded-xl border border-[var(--syn-border)] bg-[var(--syn-card-inner)] text-[var(--syn-heading)] text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all placeholder:text-[var(--syn-subtle)]"
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <label className="text-xs font-bold text-[var(--syn-heading)] block mb-1.5">
-                    {t("dashboard.domainUrl")} <span className="text-emerald-600 dark:text-emerald-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={t("dashboard.domainPlaceholder")}
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    required
-                    disabled={isScanning}
-                    className="w-full px-4 py-2.5 rounded-xl border border-[var(--syn-border)] bg-[var(--syn-card-inner)] text-[var(--syn-heading)] text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all placeholder:text-[var(--syn-subtle)]"
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <PlaceAutocomplete
-                    value={targetLocation}
-                    onChange={(loc) => setTargetLocation(loc)}
-                    disabled={isScanning}
-                    label="Target Market / Place"
-                    sublabel=""
-                    placeholder="Search country, city, or region..."
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <button
-                    type="button"
-                    onClick={handleDiscoverCategoriesAndPrompts}
-                    disabled={!brandName.trim() || isGeneratingQueries || isScanning}
-                    className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all cursor-pointer h-[42px] active:scale-[0.98]"
-                  >
-                    {isGeneratingQueries ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Analyzing Product & Market Verticals...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
-                        <span>Discover Categories & Buyer Prompts</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {autoQueryError && (
-                <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
-                  {autoQueryError}
-                </div>
-              )}
-
-              {/* Render 2-Step Category & Prompt Intelligence Flow */}
-              {useCategoryFlow && categories.length > 0 ? (
-                <div className="space-y-4 pt-1">
-                  <CategoryQueryFlow
-                    brandName={brandName}
-                    websiteUrl={websiteUrl}
-                    targetLocation={targetLocation}
-                    categories={categories}
-                    prompts={prompts}
-                    brandSummary={brandSummary}
-                    detectedCompetitors={detectedCompetitors}
-                    maxCategories={planConfig.maxQueries}
-                    onPromptsChange={handlePromptsChange}
-                  />
-                </div>
-              ) : (
-                /* Fallback Manual Queries Section */
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[var(--syn-heading)] flex items-center gap-2">
-                      <span>{t("dashboard.buyerQueriesLabel")}</span>
-                      <span className="text-[11px] font-normal text-[var(--syn-muted)]">
-                        {t("dashboard.maxQueriesNotice", {
-                          count: queriesList.filter((q) => q.trim()).length,
-                          max: planConfig.maxQueries,
-                          plan: planConfig.label,
-                        })}
-                      </span>
-                    </label>
-
-                    <div className="flex items-center gap-3">
-                      {(queriesList.length > 1 || queriesList[0].trim() !== "" || suggestedQueries.length > 0) && (
-                        <button
-                          type="button"
-                          onClick={handleClearQueries}
-                          className="text-xs font-semibold text-[var(--syn-muted)] hover:text-red-500 flex items-center gap-1 transition-colors cursor-pointer"
-                          title="Clear queries and generated suggestions"
-                        >
-                          <RotateCcw className="w-3 h-3 opacity-60" />
-                          <span>{t("dashboard.clearQueriesBtn")}</span>
-                        </button>
-                      )}
-
-                      {queriesList.length < planConfig.maxQueries && (
-                        <button
-                          type="button"
-                          onClick={handleAddQuery}
-                          className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:opacity-80 flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>{t("dashboard.addQuery")}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {queriesList.map((qVal, qIdx) => (
-                    <div key={qIdx} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-[var(--syn-card-inner)] border border-[var(--syn-border)] text-[10px] font-mono text-[var(--syn-muted)] flex items-center justify-center shrink-0">
-                        {qIdx + 1}
-                      </div>
-                      <input
-                        type="text"
-                        placeholder={
-                          qIdx === 0
-                            ? "e.g. Best employee experience platform for enterprises"
-                            : qIdx === 1
-                            ? "e.g. Top modern intranet software solutions"
-                            : "e.g. How to choose an internal communications tool?"
-                        }
-                        value={qVal}
-                        onChange={(e) => handleQueryChange(qIdx, e.target.value)}
-                        required={qIdx === 0}
-                        disabled={isScanning}
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--syn-border)] bg-[var(--syn-card-inner)] text-[var(--syn-heading)] text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all placeholder:text-[var(--syn-subtle)]"
-                      />
-                      {queriesList.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveQuery(qIdx)}
-                          className="p-2.5 rounded-xl text-[var(--syn-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          title="Remove query"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Bottom Bar */}
-              <div className="pt-4 border-t border-[var(--syn-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-[var(--syn-muted)]">{t("dashboard.enginesToProbe")}</span>
-                  <AIEngineRow size={18} />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!isFormValid || isScanning}
-                  className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#86EFAC] hover:bg-[#86EFAC]/90 text-neutral-950 text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer whitespace-nowrap"
-                >
-                  {isScanning ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-neutral-950 shrink-0" />
-                      <span>{t("dashboard.auditingLive")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 fill-neutral-950 text-neutral-950 shrink-0" />
-                      <span>{t("dashboard.launchAudit")}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {scanError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium">
-                {scanError}
-              </div>
-            )}
-          </div>
+          <WelcomeOverviewV2
+            planConfig={planConfig}
+            sessionName={session?.user?.name || "Explorer"}
+            brandName={brandName}
+            setBrandName={setBrandName}
+            websiteUrl={websiteUrl}
+            setWebsiteUrl={setWebsiteUrl}
+            targetLocation={targetLocation}
+            setTargetLocation={setTargetLocation}
+            queriesList={queriesList}
+            setQueriesList={setQueriesList}
+            categories={categories}
+            setCategories={setCategories}
+            prompts={prompts}
+            setPrompts={setPrompts}
+            detectedCompetitors={detectedCompetitors}
+            setDetectedCompetitors={setDetectedCompetitors}
+            brandSummary={brandSummary}
+            setBrandSummary={setBrandSummary}
+            category={category}
+            setCategory={setCategory}
+            isScanning={isScanning}
+            scanProgress={scanProgress}
+            scanStage={scanStage}
+            scanElapsed={scanElapsed}
+            scanError={scanError}
+            handleResetForm={handleResetForm}
+            handleRunScan={handleRunScan}
+          />
         </div>
       ) : (
         /* ─────────────────────────────────────────────────────────────
@@ -1977,7 +1646,7 @@ export default function DashboardPage() {
                           {positiveSentimentPct}%
                         </span>
                         <span className="text-xs font-semibold text-[var(--syn-muted)]">
-                          Positive Tone
+                          {t("dashboard.positiveTone")}
                         </span>
                       </div>
 
@@ -2596,5 +2265,13 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

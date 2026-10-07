@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useId } from "react";
 import { MapPin, Search, X, Loader2, Check, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PlaceSuggestion } from "@/app/api/geo/places/route";
+import type { PlaceSuggestion } from "@/lib/geo-data/places";
+import { searchPlaces, POPULAR_PRESETS } from "@/lib/geo-data/places";
 
 export type { PlaceSuggestion };
 
@@ -18,11 +19,13 @@ interface PlaceAutocompleteProps {
   className?: string;
   inputClassName?: string;
   dropdownPosition?: "bottom" | "top" | "auto";
+  onSubmit?: (value: string) => void;
 }
 
 export function PlaceAutocomplete({
   value = "",
   onChange,
+  onSubmit,
   placeholder = "Search country, city, or region (e.g. United States, Berlin, Tokyo)...",
   label = "Target Market / Geographic Location",
   sublabel = "Optimizes AI engine probes and citations for searchers in this location",
@@ -33,7 +36,7 @@ export function PlaceAutocomplete({
   dropdownPosition = "auto",
 }: PlaceAutocompleteProps) {
   const [query, setQuery] = useState(value);
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>(() => searchPlaces(value));
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [openDirection, setOpenDirection] = useState<"bottom" | "top">("bottom");
@@ -82,6 +85,9 @@ export function PlaceAutocomplete({
   // Sync external value changes
   useEffect(() => {
     setQuery(value || "");
+    if (value) {
+      setSuggestions(searchPlaces(value));
+    }
   }, [value]);
 
   // Handle click outside to close dropdown
@@ -95,24 +101,40 @@ export function PlaceAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch place suggestions from /api/geo/places with debounce
+  // Instantly search local places, and optionally enrich from API
   useEffect(() => {
     if (!isOpen) return;
 
+    // 1. Instant local search with zero latency
+    const local = searchPlaces(query);
+    setSuggestions(local);
+
+    // 2. Background enrich from /api/geo/places with debounce
     const timer = setTimeout(async () => {
       try {
+        const trimmed = query.trim();
+        if (!trimmed) return;
         setIsLoading(true);
-        const res = await fetch(`/api/geo/places?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/geo/places?q=${encodeURIComponent(trimmed)}`);
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setSuggestions(json.data);
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const seen = new Set<string>();
+          const merged: PlaceSuggestion[] = [];
+          for (const item of [...json.data, ...local]) {
+            const key = (item.formatted || item.name).toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          }
+          setSuggestions(merged.slice(0, 10));
         }
       } catch (err) {
         console.error("Failed to fetch places:", err);
       } finally {
         setIsLoading(false);
       }
-    }, 200);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [query, isOpen]);
@@ -123,6 +145,7 @@ export function PlaceAutocomplete({
     onChange(formattedVal, item);
     setIsOpen(false);
     setSelectedIndex(-1);
+    onSubmit?.(formattedVal);
   };
 
   const handleClear = () => {
@@ -135,6 +158,11 @@ export function PlaceAutocomplete({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
+      if (e.key === "Enter" && query.trim()) {
+        e.preventDefault();
+        onSubmit?.(query.trim());
+        return;
+      }
       if (e.key === "ArrowDown" || e.key === "Enter") {
         setIsOpen(true);
       }
@@ -160,6 +188,7 @@ export function PlaceAutocomplete({
           type: "custom",
           flag: "📍",
         });
+        onSubmit?.(query.trim());
         setIsOpen(false);
       }
     } else if (e.key === "Escape") {
@@ -256,10 +285,10 @@ export function PlaceAutocomplete({
           <div className="p-2 border-b border-[var(--syn-border)] flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--syn-muted)] bg-[var(--syn-card-inner)]/50">
             <span className="flex items-center gap-1.5">
               <Globe className="w-3 h-3" />
-              <span>{query.trim().length > 1 ? "OpenStreetMap Places" : "Popular Target Markets"}</span>
+              <span>{query.trim().length > 1 ? "Target Markets & Locations" : "Popular Target Markets"}</span>
             </span>
             <span className="text-[9px] font-mono lowercase opacity-70">
-              powered by openstreetmap
+              global geo database
             </span>
           </div>
 

@@ -21,7 +21,9 @@ interface WorkspaceRoleContextType {
 
 const WorkspaceRoleContext = createContext<WorkspaceRoleContextType | undefined>(undefined);
 
-const STORAGE_KEY = "querysonar_simulated_role";
+function getSimulatedRoleKey(userId?: string | null): string | null {
+  return userId ? `querysonar_simulated_role_${userId}` : null;
+}
 
 export function WorkspaceRoleProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -29,15 +31,33 @@ export function WorkspaceRoleProvider({ children }: { children: React.ReactNode 
   const [actualRole, setActualRole] = useState<WorkspaceRole>("owner");
   const [simulatedRole, setSimulatedRoleState] = useState<WorkspaceRole | null>(null);
 
+  const userId = session?.user?.id || null;
   const brandName = audit?.brandProfile?.name || "default";
   const workspaceId = brandName.toLowerCase().replace(/[^a-z0-9]/g, "-") || "default";
 
-  // Load simulated role from localStorage on mount
+  // Load simulated role from localStorage scoped to active user
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Clean legacy un-scoped key
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && ["owner", "admin", "editor", "viewer"].includes(saved)) {
-        setSimulatedRoleState(saved as WorkspaceRole);
+      localStorage.removeItem("querysonar_simulated_role");
+    } catch {}
+
+    if (!userId) {
+      setSimulatedRoleState(null);
+      return;
+    }
+
+    try {
+      const userKey = getSimulatedRoleKey(userId);
+      if (userKey) {
+        const saved = localStorage.getItem(userKey);
+        if (saved && ["owner", "admin", "editor", "viewer"].includes(saved)) {
+          setSimulatedRoleState(saved as WorkspaceRole);
+        } else {
+          setSimulatedRoleState(null);
+        }
       }
     } catch {}
 
@@ -52,7 +72,7 @@ export function WorkspaceRoleProvider({ children }: { children: React.ReactNode 
 
     window.addEventListener("querysonar_role_updated", handleRoleEvent);
     return () => window.removeEventListener("querysonar_role_updated", handleRoleEvent);
-  }, []);
+  }, [userId]);
 
   // Fetch actual role for active workspace
   const refreshRole = useCallback(async () => {
@@ -91,10 +111,13 @@ export function WorkspaceRoleProvider({ children }: { children: React.ReactNode 
 
   const setSimulatedRole = useCallback((newRole: WorkspaceRole | null) => {
     try {
-      if (newRole) {
-        localStorage.setItem(STORAGE_KEY, newRole);
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
+      const userKey = getSimulatedRoleKey(userId);
+      if (userKey) {
+        if (newRole) {
+          localStorage.setItem(userKey, newRole);
+        } else {
+          localStorage.removeItem(userKey);
+        }
       }
     } catch {}
 
@@ -102,7 +125,7 @@ export function WorkspaceRoleProvider({ children }: { children: React.ReactNode 
     window.dispatchEvent(
       new CustomEvent("querysonar_role_updated", { detail: { role: newRole } })
     );
-  }, []);
+  }, [userId]);
 
   const effectiveRole: WorkspaceRole = simulatedRole || actualRole;
   const permissions = useMemo(() => getRolePermissions(effectiveRole), [effectiveRole]);

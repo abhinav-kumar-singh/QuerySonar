@@ -1,9 +1,18 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { generateLiveCommunityScript } from "@/lib/geo-engine/generators/geo-optimizer";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Please sign in to generate community scripts." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { threadTitle, subredditOrDomain, url, brandName, category, competitors } = body;
 

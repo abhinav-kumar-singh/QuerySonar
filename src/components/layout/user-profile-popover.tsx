@@ -18,7 +18,7 @@ import {
   Check,
   RotateCcw,
 } from "lucide-react";
-import { useAuditData } from "@/lib/audit-storage";
+import { useAuditData, setActiveUserId } from "@/lib/audit-storage";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { useWorkspaceRole } from "@/lib/workspace-role-context";
 import { WorkspaceRole, ROLE_CONFIGS } from "@/lib/permissions";
@@ -98,6 +98,7 @@ export function UserProfilePopover() {
 
   const handleSignOut = () => {
     setIsOpen(false);
+    setActiveUserId(null);
     signOut({ callbackUrl: "/" });
   };
 
