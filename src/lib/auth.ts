@@ -4,14 +4,41 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 
+const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+const googleClientId =
+  process.env.AUTH_GOOGLE_ID ||
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.AUTH_GOOGLE_CLIENT_ID ||
+  "";
+const googleClientSecret =
+  process.env.AUTH_GOOGLE_SECRET ||
+  process.env.GOOGLE_CLIENT_SECRET ||
+  process.env.AUTH_GOOGLE_CLIENT_SECRET ||
+  "";
+
+if (!authSecret && process.env.NODE_ENV === "production") {
+  console.error(
+    "⚠️ [NextAuth Configuration Error]: Neither AUTH_SECRET nor NEXTAUTH_SECRET is defined in production environment variables."
+  );
+}
+if (!googleClientId || !googleClientSecret) {
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      `⚠️ [NextAuth Google Error]: Google OAuth credentials missing in production. ClientID present: ${Boolean(
+        googleClientId
+      )}, Secret present: ${Boolean(googleClientSecret)}`
+    );
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
+  secret: authSecret,
   trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
