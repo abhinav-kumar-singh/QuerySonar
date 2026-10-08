@@ -210,6 +210,11 @@ export const zh: TranslationDictionary = {
     activeBuyerSearchPlaceholder: "例如: 研发团队最好用的项目进度管理软件是哪款？",
     checksAll6Engines: "并发检测全部6大主流AI引擎（ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok）",
     runFreeScanButton: "执行免费AI扫描",
+    extractionStage1: "解析域名并获取公司元数据...",
+    extractionStage2: "分析各AI搜索模型中的品牌定位...",
+    extractionStage3: "映射分类并识别竞争对手...",
+    verifiedBrandBadge: "已验证品牌实体",
+    changeDomainBtn: "更改品牌 / 网址",
 
     // Social Proof Banner
     quoteBadge: "范式转变",

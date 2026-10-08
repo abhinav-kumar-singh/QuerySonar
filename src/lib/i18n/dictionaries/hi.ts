@@ -210,6 +210,11 @@ export const hi: TranslationDictionary = {
     activeBuyerSearchPlaceholder: "उदा. इंजीनियरिंग टीमों के लिए सबसे अच्छा प्रोजेक्ट ट्रैकिंग टूल कौन सा है?",
     checksAll6Engines: "सभी 6 प्रमुख AI इंजनों की एक साथ जांच करता है (ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok)",
     runFreeScanButton: "निःशुल्क AI स्कैन चलाएं",
+    extractionStage1: "डोमेन का समाधान और कंपनी मेटाडेटा प्राप्त किया जा रहा है...",
+    extractionStage2: "एआई खोज मॉडल में ब्रांड स्थिति का विश्लेषण किया जा रहा है...",
+    extractionStage3: "श्रेणी टैक्सोनॉमी मैप करना और प्रतिस्पर्धियों की पहचान करना...",
+    verifiedBrandBadge: "सत्यापित ब्रांड इकाई",
+    changeDomainBtn: "ब्रांड / URL बदलें",
 
     // Social Proof Banner
     quoteBadge: "सोच में बड़ा बदलाव",

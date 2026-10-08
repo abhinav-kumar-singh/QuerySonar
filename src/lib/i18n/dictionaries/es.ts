@@ -210,6 +210,11 @@ export const es: TranslationDictionary = {
     activeBuyerSearchPlaceholder: "ej. ¿Cuál es la mejor herramienta de seguimiento de proyectos para equipos de ingeniería?",
     checksAll6Engines: "Comprueba simultáneamente los 6 principales motores de IA (ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok)",
     runFreeScanButton: "Ejecutar escaneo gratuito de IA",
+    extractionStage1: "Resolviendo dominio y obteniendo metadatos de la empresa...",
+    extractionStage2: "Analizando el posicionamiento de marca en modelos de búsqueda de IA...",
+    extractionStage3: "Mapeando taxonomía de categorías e identificando competidores...",
+    verifiedBrandBadge: "Entidad de marca verificada",
+    changeDomainBtn: "Cambiar marca / URL",
 
     // Social Proof Banner
     quoteBadge: "EL CAMBIO DE PARADIGMA",

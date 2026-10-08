@@ -208,6 +208,11 @@ export const en = {
     activeBuyerSearchPlaceholder: "e.g. What is the best issue tracking tool for engineering teams?",
     checksAll6Engines: "Checks all 6 major AI engines concurrently (ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok)",
     runFreeScanButton: "Run Free AI Scan",
+    extractionStage1: "Resolving domain DNS & fetching company metadata...",
+    extractionStage2: "Analyzing brand positioning across AI search models...",
+    extractionStage3: "Mapping category taxonomy & identifying competitors...",
+    verifiedBrandBadge: "Verified Brand Entity",
+    changeDomainBtn: "Change Brand / URL",
 
     // Social Proof Banner
     quoteBadge: "THE PARADIGM SHIFT",

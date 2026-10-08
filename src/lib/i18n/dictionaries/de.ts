@@ -210,6 +210,11 @@ export const de: TranslationDictionary = {
     activeBuyerSearchPlaceholder: "z.B. Was ist das beste Issue-Tracking-Tool für Entwicklungsteams?",
     checksAll6Engines: "Prüft alle 6 führenden KI-Engines parallel (ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok)",
     runFreeScanButton: "Kostenlosen KI-Scan starten",
+    extractionStage1: "Domain wird aufgelöst und Unternehmensdaten werden abgerufen...",
+    extractionStage2: "Markenpositionierung über KI-Suchmodelle hinweg analysieren...",
+    extractionStage3: "Kategorietaxonomie zuordnen & Wettbewerber identifizieren...",
+    verifiedBrandBadge: "Verifizierte Markenentität",
+    changeDomainBtn: "Marke / URL ändern",
 
     // Social Proof Banner
     quoteBadge: "DER PARADIGMENWECHSEL",

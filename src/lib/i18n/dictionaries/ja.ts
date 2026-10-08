@@ -210,6 +210,11 @@ export const ja: TranslationDictionary = {
     activeBuyerSearchPlaceholder: "例: エンジニアチームに最適なプロジェクト管理ツールは？",
     checksAll6Engines: "主要6大AIエンジンを同時に調査（ChatGPT, Gemini, Perplexity, Claude, DeepSeek, Grok）",
     runFreeScanButton: "無料AIスキャンを実行",
+    extractionStage1: "ドメインを解決し、企業メタデータを取得中...",
+    extractionStage2: "AI検索モデルにおけるブランドポジショニングを分析中...",
+    extractionStage3: "カテゴリ分類をマッピングし、競合他社を特定中...",
+    verifiedBrandBadge: "確認済みブランドエンティティ",
+    changeDomainBtn: "ブランド / URLを変更",
 
     // Social Proof Banner
     quoteBadge: "パラダイムシフト",

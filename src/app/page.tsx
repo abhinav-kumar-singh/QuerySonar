@@ -28,6 +28,14 @@ import {
   Bot,
   Tag,
   FileText,
+  Globe,
+  Building2,
+  ShieldCheck,
+  RotateCcw,
+  MapPin,
+  ExternalLink,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { savePendingScan, saveAuditFormDraft } from "@/lib/audit-storage";
 import type { CategoryItem } from "@/components/dashboard/category-query-flow";
@@ -41,6 +49,7 @@ import { FanCarousel } from "@/components/landing/fan-carousel";
 import { AIEngineRow } from "@/components/ui/ai-engine-icons";
 import { useTranslation } from "@/lib/i18n/language-context";
 import { PlaceAutocomplete } from "@/components/ui/place-autocomplete";
+import { TypewriterEffectSmooth } from "@/components/dashboard/welcome-v2";
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -57,58 +66,177 @@ export default function LandingPage() {
     }
   };
 
-  // Category Discovery Scan State
+  // Helpers to normalize domain & brand
+  const cleanDomainString = (raw: string): string => {
+    let clean = raw.trim();
+    if (!clean) return "";
+    clean = clean.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
+    return clean;
+  };
+
+  const deriveBrandFromDomain = (domain: string): string => {
+    const cleaned = cleanDomainString(domain);
+    const host = cleaned.split("/")[0] || cleaned;
+    const parts = host.split(".");
+    if (parts.length > 0 && parts[0]) {
+      const name = parts[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return "Brand";
+  };
+
+  type ScanStep = "domain" | "extracting" | "verification" | "location" | "category";
+
+  const pillColorClasses = [
+    "border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold",
+    "border-teal-500/40 bg-teal-500/15 text-teal-800 dark:text-teal-300 font-semibold",
+    "border-purple-500/40 bg-purple-500/15 text-purple-800 dark:text-purple-300 font-semibold",
+    "border-blue-500/40 bg-blue-500/15 text-blue-800 dark:text-blue-300 font-semibold",
+    "border-cyan-500/40 bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-semibold",
+    "border-violet-500/40 bg-violet-500/15 text-violet-800 dark:text-violet-300 font-semibold",
+    "border-indigo-500/40 bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 font-semibold",
+    "border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-300 font-semibold",
+  ];
+
+  // Message-Type Scan State
+  const [scanStep, setScanStep] = useState<ScanStep>("domain");
+  const [domainInput, setDomainInput] = useState("");
+  const [domainInputError, setDomainInputError] = useState("");
   const [brand, setBrand] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [targetLocation, setTargetLocation] = useState("");
-  const [isDiscoveringCategories, setIsDiscoveringCategories] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionStage, setExtractionStage] = useState(1);
+  const [isEditingVerification, setIsEditingVerification] = useState(false);
+  const [isExpandedSummary, setIsExpandedSummary] = useState(false);
+  const [editBrandName, setEditBrandName] = useState("");
+  const [editWebsiteUrl, setEditWebsiteUrl] = useState("");
+  const [editMarket, setEditMarket] = useState("Global · English");
+  const [detectedMarket, setDetectedMarket] = useState("Global · English");
+  const [aliases, setAliases] = useState<string[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [selectedCategoryNames, setSelectedCategoryNames] = useState<string[]>([]);
   const [brandSummary, setBrandSummary] = useState<string>("");
   const [detectedCompetitors, setDetectedCompetitors] = useState<string[]>([]);
-  const [discoveryError, setDiscoveryError] = useState("");
+
+  const cleanDomain = cleanDomainString(websiteUrl || domainInput);
+  const faviconUrl = cleanDomain && cleanDomain.includes(".")
+    ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(cleanDomain)}&sz=64`
+    : "";
 
   const maxCategories = 3; // Free Tier Limit
   const scanSectionRef = useRef<HTMLElement>(null);
 
-  const handleDiscoverCategories = async (e?: React.FormEvent) => {
+  // Submit Domain & Trigger Autonomous AI Extraction
+  const handleDomainSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!brand.trim()) return;
+    setDomainInputError("");
 
-    setIsDiscoveringCategories(true);
-    setDiscoveryError("");
+    const cleaned = cleanDomainString(domainInput);
+    if (!cleaned || cleaned.length < 3) {
+      setDomainInputError(t("landing.discoveryError") || "Please enter a valid website domain");
+      return;
+    }
+
+    const fullUrl = domainInput.startsWith("http://") || domainInput.startsWith("https://")
+      ? domainInput.trim()
+      : `https://${cleaned}`;
+
+    setWebsiteUrl(fullUrl);
+    const derived = deriveBrandFromDomain(cleaned);
+    setBrand(derived);
+    setEditBrandName(derived);
+    setEditWebsiteUrl(fullUrl);
+
+    setScanStep("extracting");
+    setIsExtracting(true);
+    setExtractionStage(1);
+
+    const timer1 = setTimeout(() => setExtractionStage(2), 1100);
+    const timer2 = setTimeout(() => setExtractionStage(3), 2200);
 
     try {
       const res = await fetch("/api/categories/discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brandName: brand.trim(),
-          websiteUrl: websiteUrl.trim() || undefined,
-          targetLocation: targetLocation.trim() || undefined,
+          brandName: derived,
+          websiteUrl: fullUrl,
         }),
       });
 
-      const result = await res.json();
-      if (res.ok && result.success && result.data) {
-        const discoveredCats: CategoryItem[] = result.data.categories || [];
-        setCategories(discoveredCats);
-        setBrandSummary(result.data.summary || "");
-        setDetectedCompetitors(result.data.detectedCompetitors || []);
-
-        const autoSelected = discoveredCats.filter((c) => c.isAutoSelected).map((c) => c.name);
-        const initial = autoSelected.length > 0
-          ? autoSelected.slice(0, maxCategories)
-          : discoveredCats.slice(0, maxCategories).map((c) => c.name);
-        setSelectedCategoryNames(initial);
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        const disc = data.data;
+        const finalBrand =
+          disc.brandName && disc.brandName.toLowerCase() !== "www"
+            ? disc.brandName
+            : derived;
+        setBrand(finalBrand);
+        setEditBrandName(finalBrand);
+        if (disc.summary) setBrandSummary(disc.summary);
+        if (Array.isArray(disc.categories) && disc.categories.length > 0) {
+          setCategories(disc.categories);
+          const autoSelected = disc.categories
+            .filter((c: CategoryItem) => c.isAutoSelected)
+            .map((c: CategoryItem) => c.name);
+          const initial =
+            autoSelected.length > 0
+              ? autoSelected.slice(0, maxCategories)
+              : disc.categories.slice(0, maxCategories).map((c: CategoryItem) => c.name);
+          setSelectedCategoryNames(initial);
+        }
+        if (Array.isArray(disc.detectedCompetitors)) {
+          setDetectedCompetitors(disc.detectedCompetitors);
+        }
+        if (disc.detectedMarket) {
+          setDetectedMarket(disc.detectedMarket);
+          setEditMarket(disc.detectedMarket);
+        }
+        if (Array.isArray(disc.aliases) && disc.aliases.length > 0) {
+          setAliases(disc.aliases);
+        } else {
+          setAliases([finalBrand]);
+        }
       } else {
-        setDiscoveryError(result.error || t("landing.discoveryError"));
+        setAliases([derived]);
       }
     } catch {
-      setDiscoveryError(t("landing.discoveryError"));
+      setAliases([derived]);
     } finally {
-      setIsDiscoveringCategories(false);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      setIsExtracting(false);
+      setScanStep("verification");
     }
+  };
+
+  const handleConfirmVerification = () => {
+    if (!targetLocation) {
+      if (/india/i.test(detectedMarket)) setTargetLocation("India");
+      else if (/united states|usa|us\b/i.test(detectedMarket)) setTargetLocation("United States");
+      else if (/europe|uk|germany|france/i.test(detectedMarket)) setTargetLocation("Europe");
+      else setTargetLocation("Global");
+    }
+    setScanStep("location");
+  };
+
+  const handleSelectLocation = (loc: string) => {
+    setTargetLocation(loc);
+    setScanStep("category");
+  };
+
+  const handleResetScan = () => {
+    setScanStep("domain");
+    setDomainInput("");
+    setBrand("");
+    setWebsiteUrl("");
+    setTargetLocation("");
+    setCategories([]);
+    setSelectedCategoryNames([]);
+    setBrandSummary("");
+    setDetectedCompetitors([]);
+    setIsEditingVerification(false);
   };
 
   const handleToggleCategory = (catName: string) => {
@@ -122,14 +250,15 @@ export default function LandingPage() {
 
   const handleGenerateQueriesAndProceed = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brand.trim() || selectedCategoryNames.length === 0) return;
+    const effectiveBrand = brand.trim() || deriveBrandFromDomain(domainInput);
+    if (!effectiveBrand || selectedCategoryNames.length === 0) return;
 
     const chosenCategories = categories.filter((c) => selectedCategoryNames.includes(c.name));
-    const primaryCat = selectedCategoryNames[0] || brand.trim();
+    const primaryCat = selectedCategoryNames[0] || effectiveBrand;
 
     // Persist draft form state for instant hydration post-login
     saveAuditFormDraft({
-      brandName: brand.trim(),
+      brandName: effectiveBrand,
       websiteUrl: websiteUrl.trim(),
       targetLocation: targetLocation.trim() || undefined,
       queriesList: [],
@@ -141,7 +270,7 @@ export default function LandingPage() {
 
     // Save pending scan intent
     savePendingScan({
-      brand: brand.trim(),
+      brand: effectiveBrand,
       websiteUrl: websiteUrl.trim(),
       targetLocation: targetLocation.trim() || undefined,
       query: `Best ${primaryCat} solutions & alternatives`,
@@ -153,7 +282,7 @@ export default function LandingPage() {
     if (session?.user) {
       router.push("/dashboard");
     } else {
-      router.push("/auth/signin");
+      router.push("/auth/signin?callbackUrl=/dashboard");
     }
   };
 
@@ -769,236 +898,518 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════════════════
           7. INSTANT LIVE AUDIT SCANNER (Interactive Product Feature)
           ═══════════════════════════════════════════════════════════════ */}
-      <section id="scan" ref={scanSectionRef} className="v2-scan v2-wrap py-20">
-        <div className="v2-section-head text-center max-w-2xl mx-auto mb-14">
-          <span className="eyebrow inline-flex items-center gap-2 font-mono text-xs font-bold tracking-widest text-emerald-500 uppercase mb-3">
+      <section id="scan" ref={scanSectionRef} className="v2-scan v2-wrap py-24 relative">
+        {/* Subtle radial ambient backdrop glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+
+        <div className="v2-section-head text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow inline-flex items-center gap-2 font-mono text-xs font-bold tracking-widest text-emerald-500 uppercase mb-3 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             {t("landing.scanSectionEyebrow")}
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[var(--syn-heading)] leading-tight mb-4">
-            {t("landing.scanSectionTitle")}
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[var(--syn-heading)] leading-tight mb-4 flex items-center justify-center">
+            <TypewriterEffectSmooth
+              words={t("landing.scanSectionTitle")
+                .split(" ")
+                .map((word, idx, arr) => ({
+                  text: word,
+                  className: idx >= arr.length - 2 ? "text-emerald-500 dark:text-emerald-400" : "text-[var(--syn-heading)]",
+                }))}
+              duration={1.1}
+              delay={0.1}
+              cursorClassName="h-8 sm:h-10 lg:h-12 bg-emerald-500"
+            />
           </h2>
           <p className="subhead text-base text-[var(--syn-muted)] leading-relaxed">
             {t("landing.scanSectionSubtitle")}
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <div className="syn-card p-6 sm:p-10 shadow-xl space-y-6">
-            {/* Input fields */}
-            <form onSubmit={handleDiscoverCategories} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                <div className="md:col-span-6 flex flex-col gap-2">
-                  <label htmlFor="brand-input" className="text-xs font-semibold text-[var(--syn-heading)]">
-                    {t("landing.brandNameLabel")} <span className="text-emerald-500">*</span>
-                  </label>
-                  <input
-                    id="brand-input"
-                    type="text"
-                    placeholder={t("landing.brandPlaceholderInput")}
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    required
-                    className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                  />
+        {/* ── UNIFIED COMMAND & MESSAGE STREAM (ON BACKGROUND) ── */}
+        <div className="max-w-4xl mx-auto space-y-6 relative">
+          {/* Pre-Input Info Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 text-xs font-mono">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>{t("common.allEngines")}</span>
+              <span className="opacity-40">•</span>
+              <span className="font-normal text-[var(--syn-muted)]">
+                {t("dashboard.welcomeV2LiveSynthesis")}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--syn-muted)]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>{t("dashboard.welcomeV2EstimateTime")}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>{t("dashboard.welcomeV2PublicOnly")}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold shadow-2xs">
+                <Sparkles className="w-3 h-3 shrink-0" />
+                <span>{t("dashboard.welcomeV2Free")}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* STAGE 1: Domain Ingestion Command Bar */}
+          <form onSubmit={handleDomainSubmit} className="space-y-3">
+            <div className="relative group p-1.5 rounded-2xl bg-[var(--syn-card)] border-2 border-[var(--syn-border)] focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 shadow-md shadow-black/5 transition-all">
+              <div className="relative flex items-center">
+                <div className="pl-3.5 sm:pl-4 flex items-center pointer-events-none text-[var(--syn-muted)] group-focus-within:text-emerald-500 transition-colors">
+                  <Globe className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                 </div>
-
-                <div className="md:col-span-6 flex flex-col gap-2">
-                  <label htmlFor="url-input" className="text-xs font-semibold text-[var(--syn-heading)]">
-                    {t("landing.websiteUrlLabel")} <span className="text-[var(--syn-muted)] font-normal">{t("landing.optionalText")}</span>
-                  </label>
-                  <input
-                    id="url-input"
-                    type="text"
-                    placeholder={t("landing.urlPlaceholderInput")}
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl border border-[var(--syn-input-border)] bg-[var(--syn-input-bg)] text-[var(--syn-input-text)] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                  />
-                </div>
-
-                {/* Target Geographic Place Autocomplete */}
-                <div className="md:col-span-12">
-                  <PlaceAutocomplete
-                    value={targetLocation}
-                    onChange={(loc) => setTargetLocation(loc)}
-                    label={t("landing.targetMarketLabel")}
-                    sublabel=""
-                    placeholder={t("landing.targetMarketPlaceholder")}
-                    inputClassName="py-3.5"
-                  />
-                </div>
-              </div>
-
-              {/* Discover Action Trigger */}
-              <div className="flex items-center justify-between pt-2 flex-wrap gap-3">
-                <div className="text-xs text-[var(--syn-muted)]">
-                  <span>{t("landing.checksAll6Engines")}</span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!brand.trim() || isDiscoveringCategories}
-                  className="v2-btn v2-btn-primary ml-auto disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
-                >
-                  {isDiscoveringCategories ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t("landing.discoveringCategories")}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      {t("landing.discoverCategoriesBtn")}
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {/* Error banner */}
-            {discoveryError && (
-              <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl animate-in fade-in duration-200">
-                {discoveryError}
-              </div>
-            )}
-
-            {/* Discovered Categories & Context Area */}
-            {categories.length > 0 && (
-              <div className="p-4 sm:p-6 rounded-2xl bg-[var(--syn-card-inner)] border border-[var(--syn-border)] space-y-5 animate-in fade-in duration-300">
-                {/* Market Summary Context */}
-                {brandSummary && (
-                  <div className="p-3.5 rounded-xl bg-[var(--syn-card)] border border-[var(--syn-border)] text-xs leading-relaxed flex items-start gap-3 shadow-xs">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
-                      <FileText className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-mono uppercase font-bold text-[var(--syn-muted)] block mb-0.5">
-                        {t("landing.brandSummaryLabel")}
-                      </span>
-                      <p className="text-[var(--syn-heading)] text-xs leading-relaxed">{brandSummary}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Detected Competitors */}
-                {detectedCompetitors.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--syn-muted)]">
-                    <span className="font-mono text-emerald-400 font-semibold text-[11px] uppercase tracking-wider">
-                      {t("landing.detectedCompetitorsLabel")}
-                    </span>
-                    {detectedCompetitors.map((comp, cIdx) => (
-                      <span
-                        key={cIdx}
-                        className="px-2.5 py-1 rounded-lg bg-[var(--syn-card)] border border-[var(--syn-border)] text-[var(--syn-heading)] text-xs font-medium"
-                      >
-                        {comp}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Category Selection Area */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-emerald-500" />
-                      <h4 className="text-xs sm:text-sm font-bold text-[var(--syn-heading)]">
-                        {t("landing.selectCategoriesHeader")} ({t("landing.freeLimitBadge")})
-                      </h4>
-                    </div>
-                    <span
-                      className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border transition-all ${
-                        selectedCategoryNames.length >= maxCategories
-                          ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
-                          : "bg-emerald-500/15 border-emerald-500/30 text-emerald-500"
-                      }`}
+                <input
+                  type="text"
+                  disabled={isExtracting || scanStep !== "domain"}
+                  value={domainInput}
+                  onChange={(e) => {
+                    setDomainInput(e.target.value);
+                    if (domainInputError) setDomainInputError("");
+                  }}
+                  placeholder={t("dashboard.welcomeV2EnterWebsitePlaceholder") || "Enter your domain (e.g. acme.com or https://...)"}
+                  style={{ outline: "none", boxShadow: "none" }}
+                  className={`w-full pl-3.5 pr-36 sm:pr-44 py-3 sm:py-3.5 bg-transparent text-[var(--syn-heading)] text-sm sm:text-base placeholder:text-[var(--syn-subtle)] outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 ring-0 border-none font-mono ${
+                    scanStep !== "domain" ? "opacity-90 cursor-default" : ""
+                  }`}
+                />
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {scanStep === "domain" ? (
+                    <button
+                      type="submit"
+                      disabled={!domainInput.trim() || isExtracting}
+                      className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/25 flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                     >
-                      {selectedCategoryNames.length}/{maxCategories} {t("landing.selectedCount")}
-                    </span>
-                  </div>
-
-                  {/* Limit Notice */}
-                  {selectedCategoryNames.length >= maxCategories && (
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in duration-200">
-                      <span className="font-bold shrink-0">{t("landing.freeLimitBadge")}:</span>
-                      <span className="text-[var(--syn-muted)] text-[11px]">
-                        {t("landing.freeLimitNotice")}
+                      {isExtracting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>{t("dashboard.welcomeV2AnalyzingBtn") || "Analyzing..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{t("dashboard.welcomeV2AnalyzeBtn") || "Analyze Website"}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 pr-1">
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-semibold">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Live Verified
                       </span>
+                      <button
+                        type="button"
+                        onClick={handleResetScan}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--syn-card-inner)] hover:bg-emerald-500/10 border border-[var(--syn-border)] hover:border-emerald-500/30 text-[var(--syn-muted)] hover:text-emerald-500 font-mono text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Change domain"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>{t("landing.changeDomainBtn")}</span>
+                      </button>
                     </div>
                   )}
-
-                  {/* Grid of Categories */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {categories.map((cat) => {
-                      const isSelected = selectedCategoryNames.includes(cat.name);
-                      const isMaxReached = selectedCategoryNames.length >= maxCategories;
-                      const isDisabled = !isSelected && isMaxReached;
-
-                      return (
-                        <div
-                          key={cat.id}
-                          onClick={() => {
-                            if (!isDisabled) {
-                              handleToggleCategory(cat.name);
-                            }
-                          }}
-                          aria-disabled={isDisabled}
-                          className={`p-3.5 rounded-xl border flex items-center gap-3 transition-all duration-150 select-none ${
-                            isSelected
-                              ? "bg-emerald-500/10 border-emerald-500/50 text-[var(--syn-heading)] shadow-xs scale-[1.005] cursor-pointer"
-                              : isDisabled
-                              ? "bg-[var(--syn-card)]/40 border-[var(--syn-border)]/40 opacity-40 cursor-not-allowed text-[var(--syn-muted)]"
-                              : "bg-[var(--syn-card)] border-[var(--syn-border)] text-[var(--syn-muted)] hover:border-emerald-500/40 hover:text-[var(--syn-heading)] cursor-pointer"
-                          }`}
-                        >
-                          <div
-                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all ${
-                              isSelected
-                                ? "bg-[#86EFAC] text-neutral-950 font-bold shadow-xs"
-                                : isDisabled
-                                ? "border border-[var(--syn-border)]/40 bg-[var(--syn-card-inner)]/30 opacity-50"
-                                : "border border-[var(--syn-border)] bg-[var(--syn-card-inner)]"
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </div>
-
-                          <span
-                            className={`text-xs font-semibold leading-snug truncate ${
-                              isSelected
-                                ? "text-emerald-500 font-bold"
-                                : isDisabled
-                                ? "text-[var(--syn-muted)]/70"
-                                : "text-[var(--syn-heading)]"
-                            }`}
-                          >
-                            {cat.name}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Final Launch / Auth Gate Trigger */}
-                <div className="pt-4 border-t border-[var(--syn-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-xs text-[var(--syn-muted)] text-center sm:text-left">
-                    <span>{t("landing.signInPromptTip")}</span>
+            {domainInputError && (
+              <p className="text-xs text-red-500 font-medium pl-2 mt-2 animate-in fade-in">
+                {domainInputError}
+              </p>
+            )}
+          </form>
+
+          {/* STAGE 2: Autonomous AI Extraction Stream */}
+          {scanStep === "extracting" && (
+            <div className="py-2 space-y-4 relative z-10 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center shrink-0">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-[var(--syn-heading)]">
+                    {t("dashboard.welcomeV2StepExtractingTitle") || "Reading Public Site & Metadata"}
+                  </h3>
+                  <p className="text-xs text-[var(--syn-muted)]">
+                    {t("dashboard.welcomeV2AnalyzingDomain") || "Inspecting site & extracting brand verticals..."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 pt-2 font-mono text-xs">
+                <div className="flex items-center gap-2.5 text-emerald-500">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{t("dashboard.welcomeV2ConnectedTo") || "Connected to"} {cleanDomainString(domainInput)}</span>
+                </div>
+                <div className={`flex items-center gap-2.5 transition-all ${extractionStage >= 2 ? "text-emerald-500" : "text-[var(--syn-muted)]"}`}>
+                  {extractionStage >= 2 ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-500/70" />
+                  )}
+                  <span>{t("dashboard.welcomeV2ExtractingPersonas") || "Extracting value proposition & customer personas..."}</span>
+                </div>
+                <div className={`flex items-center gap-2.5 transition-all ${extractionStage >= 3 ? "text-emerald-500" : "text-[var(--syn-muted)]"}`}>
+                  {extractionStage >= 3 ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <span className="w-4 h-4 rounded-full border border-dashed border-[var(--syn-border)] shrink-0" />
+                  )}
+                  <span>{t("dashboard.welcomeV2SynthesizingQueries") || "Synthesizing high-converting buyer search queries across 6 AI models..."}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 3: Verification Card ("Does this look right?") */}
+          {(scanStep === "verification" || scanStep === "location" || scanStep === "category") && (
+            <div className="space-y-4 pt-2 relative z-10 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-bold text-[var(--syn-heading)]">
+                  {t("dashboard.welcomeV2DoesThisLookRight")}
+                </h3>
+                {scanStep !== "verification" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-semibold border border-emerald-500/20">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Verified
+                  </span>
+                )}
+              </div>
+
+              <div className="w-full rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] p-5 sm:p-6 shadow-md space-y-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-neutral-950 border border-[var(--syn-border)] flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                      {faviconUrl ? (
+                        <img
+                          src={faviconUrl}
+                          alt={brand}
+                          className="w-7 h-7 object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <Building2 className="w-6 h-6 text-emerald-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-base sm:text-lg font-bold text-[var(--syn-heading)] leading-snug truncate">
+                        {brand}
+                      </h4>
+                      <p className="text-xs text-[var(--syn-muted)] font-mono truncate">
+                        {websiteUrl || domainInput}
+                      </p>
+                    </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={handleGenerateQueriesAndProceed}
-                    disabled={selectedCategoryNames.length === 0}
-                    className="v2-btn v2-btn-primary w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+                    onClick={() => setIsEditingVerification(!isEditingVerification)}
+                    className="px-3.5 py-1.5 rounded-full border border-[var(--syn-border)] hover:border-emerald-500/50 bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] text-xs font-semibold text-[var(--syn-heading)] transition-all cursor-pointer"
                   >
-                    <span>{t("landing.generateQueriesBtn")}</span>
-                    <ArrowRight size={16} />
+                    {t("dashboard.welcomeV2Edit")}
                   </button>
                 </div>
+
+                {/* Details Rows */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 pt-1">
+                  <span className="text-xs font-medium text-[var(--syn-muted)] w-24 sm:w-28 shrink-0">
+                    {t("dashboard.welcomeV2WhatYouDo")}
+                  </span>
+                  <div className="flex-1 space-y-1">
+                    <h5 className="text-sm font-bold text-[var(--syn-heading)]">
+                      {t("dashboard.welcomeV2AboutBrand", { brand })}
+                    </h5>
+                    <p className={`text-xs text-[var(--syn-muted)] leading-relaxed ${isExpandedSummary ? "" : "line-clamp-2"}`}>
+                      {brandSummary || `${brand} is a market leader delivering solutions to customers worldwide.`}
+                    </p>
+                    {brandSummary && brandSummary.length > 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsExpandedSummary(!isExpandedSummary)}
+                        className="text-xs font-semibold text-emerald-500 hover:underline pt-0.5 cursor-pointer block"
+                      >
+                        {isExpandedSummary ? t("dashboard.welcomeV2ShowLess") : t("dashboard.welcomeV2ShowMore")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Categories */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 pt-2">
+                  <span className="text-xs font-medium text-[var(--syn-muted)] w-24 sm:w-28 shrink-0 pt-1">
+                    {t("dashboard.welcomeV2CategoriesLabel")}
+                  </span>
+                  <div className="flex-1 flex flex-wrap gap-2">
+                    {categories.slice(0, 8).map((cat, idx) => (
+                      <span
+                        key={cat.id || idx}
+                        className={`px-3 py-1 rounded-lg border text-xs font-semibold ${pillColorClasses[idx % pillColorClasses.length]}`}
+                      >
+                        {cat.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Detected Competitors */}
+                {detectedCompetitors.length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 pt-2 border-t border-[var(--syn-border)]/60">
+                    <span className="text-xs font-medium text-[var(--syn-muted)] w-24 sm:w-28 shrink-0">
+                      {t("landing.detectedCompetitorsLabel")}
+                    </span>
+                    <div className="flex-1 flex flex-wrap gap-2">
+                      {detectedCompetitors.map((comp, cIdx) => (
+                        <span
+                          key={cIdx}
+                          className="px-2.5 py-1 rounded-lg bg-[var(--syn-card-inner)] border border-[var(--syn-border)] text-xs text-[var(--syn-heading)] font-medium"
+                        >
+                          {comp}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {scanStep === "verification" && (
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmVerification}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/25 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{t("dashboard.welcomeV2YesLooksRight")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetScan}
+                    className="px-4 py-2.5 rounded-xl border border-[var(--syn-border)] hover:bg-[var(--syn-card-inner)] text-[var(--syn-muted)] hover:text-[var(--syn-heading)] text-xs font-semibold cursor-pointer transition-all"
+                  >
+                    <span>{t("dashboard.welcomeV2NoEditDetails")}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STAGE 4 & 5: Conversational AI Agent Stream */}
+          {(scanStep === "location" || scanStep === "category") && (
+            <div className="space-y-6 pt-4 relative z-10 animate-in fade-in duration-300">
+              {/* MESSAGE 1: AI WEBSITE ANALYSIS & LOCATION INQUIRY */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center shrink-0">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                        <span>AI Market Intelligence Agent</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-[var(--syn-subtle)] font-mono">
+                        Website Diagnostics & Market Calibration
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                    Step 1 of 2
+                  </span>
+                </div>
+
+                <div className="text-xs sm:text-sm text-[var(--syn-heading)] leading-relaxed space-y-1.5 max-w-3xl">
+                  <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                    ✦ Analysis for {brand}:
+                  </p>
+                  <p className="text-[var(--syn-muted)] leading-relaxed">
+                    I analyzed {cleanDomainString(websiteUrl || domainInput)} and identified your brand as {brand}. {brandSummary || "Your website delivers specialized digital products and services to buyers worldwide."} To analyze how ChatGPT, Google Gemini, Perplexity, Claude, DeepSeek, and Grok recommend {brand} to active buyers, where are your primary customers located?
+                  </p>
+                </div>
+
+                {/* Location Selector or Confirmed Bubble */}
+                {scanStep === "location" ? (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: t("dashboard.welcomeV2LocationGlobal") || "Global / Worldwide", val: "Global" },
+                        { label: t("dashboard.welcomeV2LocationUS") || "United States & Canada", val: "United States" },
+                        { label: t("dashboard.welcomeV2LocationEU") || "Europe & UK", val: "Europe" },
+                        { label: t("dashboard.welcomeV2LocationIndia") || "India & South Asia", val: "India" },
+                        { label: t("dashboard.welcomeV2LocationAPAC") || "Asia Pacific", val: "Asia Pacific" },
+                      ].map((loc) => (
+                        <button
+                          key={loc.val}
+                          type="button"
+                          onClick={() => handleSelectLocation(loc.val)}
+                          className="px-4 py-2 rounded-xl bg-[var(--syn-card)] border border-[var(--syn-border)] hover:border-emerald-500 hover:text-emerald-500 text-xs font-semibold text-[var(--syn-heading)] transition-all cursor-pointer shadow-2xs"
+                        >
+                          {loc.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="w-full pt-1">
+                      <PlaceAutocomplete
+                        value={targetLocation}
+                        onChange={(loc) => {
+                          if (loc) handleSelectLocation(loc);
+                        }}
+                        className="w-full"
+                        label=""
+                        sublabel=""
+                        placeholder={t("landing.targetMarketPlaceholder")}
+                        inputClassName="w-full py-2.5 rounded-xl border-[var(--syn-border)] bg-[var(--syn-card)] text-xs shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-end pt-1 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-[var(--syn-card)] border border-emerald-500/30 text-xs shadow-xs">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-[var(--syn-muted)] font-mono">Market:</span>
+                      <strong className="text-[var(--syn-heading)] font-bold">{targetLocation}</strong>
+                      <button
+                        type="button"
+                        onClick={() => setScanStep("location")}
+                        className="ml-2 text-[11px] text-emerald-500 hover:underline font-mono cursor-pointer flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Change</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* MESSAGE 2: CATEGORY SELECTION */}
+              {scanStep === "category" && (
+                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="flex items-center justify-between pb-1 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-[var(--syn-heading)] flex items-center gap-1.5">
+                          <span>Business Vertical Classifier</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                        </div>
+                        <span className="text-[10px] text-[var(--syn-subtle)] font-mono">
+                          Semantic Product Taxonomy
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 font-semibold border border-teal-500/20">
+                      Step 2 of 2
+                    </span>
+                  </div>
+
+                  <div className="text-xs sm:text-sm text-[var(--syn-heading)] leading-relaxed space-y-1.5 max-w-3xl">
+                    <p className="font-mono text-teal-600 dark:text-teal-400 font-bold text-xs">
+                      ✦ Taxonomies identified for {brand}:
+                    </p>
+                    <p className="text-[var(--syn-muted)] leading-relaxed">
+                      Calibrating search models for {targetLocation}. Based on your website's products and positioning, I discovered the following business categories for {brand}. Select up to {maxCategories} business verticals to audit:
+                    </p>
+                  </div>
+
+                  {/* Interactive Category Cards */}
+                  <div className="p-5 sm:p-6 rounded-2xl bg-[var(--syn-card)] border border-[var(--syn-border)] shadow-md space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-[var(--syn-border)]">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-teal-500" />
+                        <h4 className="text-xs sm:text-sm font-bold text-[var(--syn-heading)]">
+                          {t("landing.selectCategoriesHeader")}
+                        </h4>
+                      </div>
+                      <span
+                        className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border transition-all ${
+                          selectedCategoryNames.length >= maxCategories
+                            ? "bg-amber-500/15 border-amber-500/30 text-amber-500"
+                            : "bg-teal-500/15 border-teal-500/30 text-teal-500"
+                        }`}
+                      >
+                        {selectedCategoryNames.length}/{maxCategories} {t("landing.selectedCount")}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {categories.map((cat, cIdx) => {
+                        const isSelected = selectedCategoryNames.includes(cat.name);
+                        const isMaxReached = selectedCategoryNames.length >= maxCategories;
+                        const isDisabled = !isSelected && isMaxReached;
+
+                        return (
+                          <div
+                            key={cat.id || cIdx}
+                            onClick={() => {
+                              if (!isDisabled) handleToggleCategory(cat.name);
+                            }}
+                            className={`p-4 rounded-xl border text-left transition-all select-none flex flex-col justify-between gap-3 shadow-2xs ${
+                              isSelected
+                                ? "bg-teal-500/10 border-teal-500/60 shadow-md ring-1 ring-teal-500/40 cursor-pointer"
+                                : isDisabled
+                                ? "bg-[var(--syn-card-inner)]/40 border-[var(--syn-border)]/40 opacity-40 cursor-not-allowed"
+                                : "bg-[var(--syn-card-inner)] hover:bg-[var(--syn-card-subtle)] border-[var(--syn-border)] hover:border-teal-500/50 cursor-pointer active:scale-[0.98]"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold text-[var(--syn-heading)]">
+                                {cat.name}
+                              </span>
+                              <div
+                                className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                                  isSelected ? "bg-teal-500 text-white" : "border border-[var(--syn-border)]"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Launch Banner */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-[var(--syn-card-inner)] to-emerald-500/5 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+                      <div className="flex items-center gap-3 text-center sm:text-left">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-[var(--syn-heading)]">
+                            {t("landing.runFreeScanButton")}
+                          </h4>
+                          <p className="text-xs text-[var(--syn-muted)]">
+                            {t("landing.signInPromptTip")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateQueriesAndProceed}
+                        disabled={selectedCategoryNames.length === 0}
+                        className="v2-btn v2-btn-primary w-full sm:w-auto px-6 py-3.5 text-sm font-bold justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 shrink-0 shadow-lg shadow-emerald-500/20"
+                      >
+                        <span>{t("landing.generateQueriesBtn")}</span>
+                        <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

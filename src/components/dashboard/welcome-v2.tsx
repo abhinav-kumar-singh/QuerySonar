@@ -114,13 +114,33 @@ export function TypewriterEffectSmooth({
   cursorClassName = "",
   duration = 0.9,
   delay = 0.05,
+  cursorDelay,
+  hideCursorAfter,
 }: {
   words: { text: string; className?: string }[];
   className?: string;
   cursorClassName?: string;
   duration?: number;
   delay?: number;
+  cursorDelay?: number;
+  hideCursorAfter?: number;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, amount: 0.2 });
+  const [cursorHidden, setCursorHidden] = useState(false);
+
+  useEffect(() => {
+    if (isInView && hideCursorAfter) {
+      const timer = setTimeout(() => {
+        setCursorHidden(true);
+      }, hideCursorAfter * 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isInView, hideCursorAfter]);
+
+  const effectiveCursorDelay = cursorDelay !== undefined ? cursorDelay : delay;
+  const isCursorAllowed = !cursorHidden && !cursorClassName.includes("hidden");
+
   const wordsArray = React.useMemo(
     () =>
       words.map((word) => ({
@@ -131,11 +151,11 @@ export function TypewriterEffectSmooth({
   );
 
   return (
-    <div className={`inline-flex items-center gap-1 ${className}`}>
+    <div ref={containerRef} className={`inline-flex items-center gap-1 ${className}`}>
       <motion.div
         className="overflow-hidden pb-1"
         initial={{ width: "0%" }}
-        animate={{ width: "fit-content" }}
+        animate={isInView ? { width: "fit-content" } : { width: "0%" }}
         transition={{
           duration,
           ease: "easeInOut",
@@ -157,16 +177,19 @@ export function TypewriterEffectSmooth({
           ))}
         </div>
       </motion.div>
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 0.7,
-          repeat: Infinity,
-          repeatType: "reverse",
-        }}
-        className={`inline-block rounded-xs w-[3px] sm:w-[4px] h-7 sm:h-9 lg:h-11 bg-emerald-500 shrink-0 ${cursorClassName}`}
-      />
+      {isCursorAllowed && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{
+            duration: 0.7,
+            delay: effectiveCursorDelay,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className={`inline-block rounded-xs w-[3px] sm:w-[4px] h-7 sm:h-9 lg:h-11 bg-emerald-500 shrink-0 ${cursorClassName}`}
+        />
+      )}
     </div>
   );
 }
